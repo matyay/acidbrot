@@ -25,11 +25,14 @@ int AcidbrotApp::initialize () {
     m_Logger->info("Init");
 
     // Hints
-//    glfwWindowHint(GLFW_DOUBLEBUFFER, true);
+    //glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    //glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_DOUBLEBUFFER, true);
+
     glfwWindowHint(GLFW_RESIZABLE, false);
 
     // Create the window
-    m_Window = glfwCreateWindow(640, 480, "Acid-brot", nullptr, nullptr);
+    m_Window = glfwCreateWindow(1280, 700, "Acid-brot", nullptr, nullptr);
     if (m_Window == nullptr) {
         m_Logger->error("Error creating window!");
         return -1;
@@ -54,6 +57,9 @@ int AcidbrotApp::initialize () {
     // Print OpenGL capabilities
     GL::dumpRendererCaps();
 
+    m_HaveFp64 = GL::isExtensionAvailable("GL_ARB_gpu_shader_fp64");
+    m_Logger->info("m_HaveFp64 {}", m_HaveFp64);
+
     // ..........................................
 
     m_Fonts["generic"] = std::unique_ptr<GL::Font>(new GL::Font("media/fonts/Roboto-Regular.ttf"));
@@ -61,7 +67,7 @@ int AcidbrotApp::initialize () {
     // ..........................................
 
     GL::Shader vshGenericF     ("shaders/generic2d.vsh",     GL_VERTEX_SHADER);
-    GL::Shader fshMandelbrot   ("shaders/mandelbrot.fsh",    GL_FRAGMENT_SHADER);
+    GL::Shader fshMandelbrot   ("shaders/mandelbrot32.fsh",    GL_FRAGMENT_SHADER);
 
     m_Shaders["font"]          = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
 
@@ -92,6 +98,9 @@ int AcidbrotApp::loop (double dt) {
 
     // Escape
     if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        return 1;
+    }
+    if (glfwGetKey(m_Window, GLFW_KEY_Q) == GLFW_PRESS) {
         return 1;
     }
 
@@ -175,8 +184,11 @@ int AcidbrotApp::loop (double dt) {
     // ................................
     // Initialize GL rendering
 
+    int winWidth, winHeight;
+    glfwGetFramebufferSize(m_Window, &winWidth, &winHeight);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    GL_CHECK(glViewport(0, 0, 640, 480));
+    GL_CHECK(glViewport(0, 0, winWidth, winHeight));
 
     GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
@@ -199,7 +211,10 @@ int AcidbrotApp::loop (double dt) {
 
         GL_CHECK(glDisable(GL_BLEND));
 
-        float aspect = (float)640 / (float)480;
+        float viewport[4];
+        GL_CHECK(glGetFloatv(GL_VIEWPORT, viewport));
+
+        float aspect = viewport[2] / viewport[3];
 
         u0 = -1.0f;
         u1 = +1.0f;
@@ -225,13 +240,12 @@ int AcidbrotApp::loop (double dt) {
 
         // Frame rate
         GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 0, 0, 0.75f));
-        m_Fonts.at("generic")->drawText(2, 480 - 16-2, "Frame rate: %.1f FPS", getFrameRate());
+        m_Fonts.at("generic")->drawText(2, viewport[3] - 16-2, "Frame rate: %.1f FPS", getFrameRate());
 
-/*
         GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 1, 1, 0.75f));
-        m_Fonts.at("generic")->drawText(2, displayInfo.height - 32-2, stringf("X:%.15f Y:%.15f Z:%.3f C:%.15f (%.15f, %.15f)",
+        m_Fonts.at("generic")->drawText(2, viewport[3] - 32-2, stringf("X:%.15f Y:%.15f Z:%.3f C:%.15f (%.15f, %.15f)",
             m_Viewport.position[0], m_Viewport.position[1], m_Viewport.position[2], m_Viewport.position[3], m_Viewport.position[4], m_Viewport.position[5]));
-*/
+
         GL_CHECK(glUseProgram(0));
     }
 

@@ -42,6 +42,9 @@ protected:
     /// OpenGL framebuffers
     GL::Map<GL::Framebuffer>    m_Framebuffers;
 
+    // Have fp64 shader extension
+    bool m_HaveFp64 = false;
+
     // Viewport
     struct {
 

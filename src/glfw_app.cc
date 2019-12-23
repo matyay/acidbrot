@@ -58,7 +58,7 @@ int GLFWApp::run () {
             m_FrameRate.count  = 0;
             m_FrameRate.time  -= 1.0;
 
-            SPDLOG_LOGGER_DEBUG(m_Logger, "FPS {:.3f}", m_FrameRate.rate);
+            //SPDLOG_LOGGER_DEBUG(m_Logger, "FPS {:.3f}", m_FrameRate.rate);
         }
 
         // Invoke the loop method
