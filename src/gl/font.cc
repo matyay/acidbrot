@@ -45,7 +45,7 @@ Font::Font (const std::string a_Name, size_t a_Height) :
     FT_Set_Pixel_Sizes(face, 0, m_Height);
     
     // Generate glyphs
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    GL_CHECK(glPixelStorei(GL_UNPACK_ALIGNMENT, 1));
 
     for (size_t i=32; i<128; ++i) {
 
@@ -61,10 +61,10 @@ Font::Font (const std::string a_Name, size_t a_Height) :
         FT_GlyphSlot g = face->glyph;
         
         // Upload it to OpenGL        
-        glGenTextures(1, &glyph.texture);        
-        glBindTexture(GL_TEXTURE_2D, glyph.texture);
+        GL_CHECK(glGenTextures(1, &glyph.texture));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, glyph.texture));
 
-        glTexImage2D(
+        GL_CHECK(glTexImage2D(
             GL_TEXTURE_2D,
             0,
             GL_LUMINANCE,
@@ -74,13 +74,13 @@ Font::Font (const std::string a_Name, size_t a_Height) :
             GL_LUMINANCE,
             GL_UNSIGNED_BYTE,
             g->bitmap.buffer
-        );
+        ));
     
         // Set texture parameters    
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
         
         // Set glyph size information
         glyph.size[0] = g->bitmap.width;
@@ -93,7 +93,7 @@ Font::Font (const std::string a_Name, size_t a_Height) :
         m_Glyphs.insert(std::pair<char, Glyph>(i, glyph));
     }
     
-    glBindTexture(GL_TEXTURE_2D, 0);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     
     // Free font face
     FT_Done_Face(face);   
@@ -131,8 +131,8 @@ void Font::_drawText(float x, float y, const char* a_String) {
     const float scale = 1.0f;
 
     // Setup OpenGL state
-    glEnableVertexAttribArray(0);
-    glActiveTexture(GL_TEXTURE0);    
+    GL_CHECK(glEnableVertexAttribArray(0));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));    
 
     // Render glyphs
     for (char const *p = a_String; *p; ++p) {
@@ -180,18 +180,18 @@ void Font::_drawText(float x, float y, const char* a_String) {
             { xpos + w, ypos + h,   1.0, 0.0 }           
         };
                 
-        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, vertices);
+        GL_CHECK(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, vertices));
             
         // Bind glyph texture
-        glBindTexture(GL_TEXTURE_2D, glyph.texture);
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, glyph.texture));
         
         // Render
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
     }
     
     // Cleanup
-    glDisableVertexAttribArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    GL_CHECK(glDisableVertexAttribArray(0));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 // ============================================================================

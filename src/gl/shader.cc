@@ -18,6 +18,13 @@ Shader::Shader (const std::string a_Name, const std::string& a_Code, GLenum a_Ty
     m_Name(a_Name),
     m_Type(a_Type)
 {
+    if (m_Type != GL_VERTEX_SHADER &&
+        m_Type != GL_GEOMETRY_SHADER &&
+        m_Type != GL_FRAGMENT_SHADER)
+    {
+        throw std::runtime_error("Invalid shader type specified");
+    }
+
     // Inject defines to the code
     std::string code = injectDefines(a_Code, a_Defines);
 
@@ -271,6 +278,7 @@ void Shader::dumpCode (const std::string& a_Code, spdlog::level::level_enum a_Le
 void Shader::compile (const std::string& a_Code) {
 
     const std::string typeName = (m_Type == GL_VERTEX_SHADER)   ? "vertex"   :
+                                 (m_Type == GL_GEOMETRY_SHADER) ? "geometry" :
                                  (m_Type == GL_FRAGMENT_SHADER) ? "fragment" :
                                                                   "unknown";
 
