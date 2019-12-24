@@ -2,9 +2,10 @@ precision highp float;
 
 varying vec2 v_TexCoord;
 
-uniform VEC2 fractalPos;
-uniform REAL fractalScale;
-uniform REAL fractalAngle;
+uniform VEC2  fractalPosition;
+uniform float fractalRotation;
+uniform REAL  fractalScale;
+uniform vec2  fractalCoeff;
 
 out vec4 o_Color;
 
@@ -13,22 +14,31 @@ void main(void) {
     const int  MAX_ITER = 256;
     const REAL B = 256.0;
 
+    // Rotation matrix. FIXME: pass values of sin and cos as uniforms.
+    MAT2 rot;
+    rot[0] = VEC2( cos(fractalRotation), sin(fractalRotation));
+    rot[1] = VEC2(-sin(fractalRotation), cos(fractalRotation));
+
+    // Compute coordinates of the point on the complex plane
+    VEC2 pos = VEC2(v_TexCoord.x, v_TexCoord.y);
+    pos  = rot * pos;
+    pos /= fractalScale;
+    pos += fractalPosition;
+
     // Initialize
-    VEC2  z = VEC2(0.0, 0.0);
     float n = 0.0;
 
-    // Get the initial position
-    VEC2 c = VEC2(v_TexCoord.x, v_TexCoord.y);
+#ifdef MANDELBROT
+    VEC2  z = VEC2(0.0, 0.0);
+    VEC2  c = pos;
+#endif
 
-    mat2 rot;
-    rot[0] = VEC2( cos(fractalAngle), sin(fractalAngle));
-    rot[1] = VEC2(-sin(fractalAngle), cos(fractalAngle));
+#ifdef JULIA
+    VEC2  z = pos;
+    VEC2  c = VEC2(fractalCoeff.x, fractalCoeff.y);
+#endif
 
-    c  = rot * c;
-    c /= fractalScale;
-    c += fractalPos;
-
-    // Evaluation
+    // Evaluate
     for (int i=0; i<MAX_ITER; ++i) {
 
         REAL xx = z.x * z.x;
@@ -58,6 +68,3 @@ void main(void) {
     float q = n - p;
     o_Color = vec4(p / 255.0, q, 0.0, 1.0);
 }
-
-// re  xxx - xyy - 2xyy
-// im 2xxy + xxy -  yyy

@@ -70,25 +70,32 @@ int AcidbrotApp::initialize () {
     // ..........................................
 
     GL::Shader vshGeneric      ("shaders/generic2d.vsh",       GL_VERTEX_SHADER);
-    GL::Shader fshMandelbrot   ("shaders/mandelbrot32.fsh",    GL_FRAGMENT_SHADER);
+    GL::Shader fshMandelbrot   ("shaders/mandelbrot32.fsh",    GL_FRAGMENT_SHADER, {{"MANDELBROT", "1"}});
+    GL::Shader fshJulia        ("shaders/mandelbrot32.fsh",    GL_FRAGMENT_SHADER, {{"JULIA", "1"}});
     GL::Shader fshColorizer    ("shaders/colorizer.fsh",       GL_FRAGMENT_SHADER);
     GL::Shader fshDespeckle    ("shaders/despeckle.fsh",       GL_FRAGMENT_SHADER);
 
-    m_Shaders["font"]          = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
+    m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
 
-    m_Shaders["mandelbrot"]    = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+    m_Shaders["mandelbrot"] = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
         vshGeneric,
         fshMandelbrot,
         "mandelbrot"
         ));
 
-    m_Shaders["colorizer"]     = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+    m_Shaders["julia"]      = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+        vshGeneric,
+        fshJulia,
+        "julia"
+        ));
+
+    m_Shaders["colorizer"]  = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
         vshGeneric,
         fshColorizer,
         "colorizer"
         ));
 
-    m_Shaders["despeckle"]     = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+    m_Shaders["despeckle"]  = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
         vshGeneric,
         fshDespeckle,
         "despeckle"
@@ -124,12 +131,16 @@ int AcidbrotApp::initialize () {
     // ..........................................
 
     // Initialize the viewport
-    for (size_t i=0; i<6; ++i) {
-        m_Viewport.position[i] = 0.0;
-        m_Viewport.velocity[i] = 0.0;
+    size_t paramCount = sizeof(Viewport) / sizeof(double);
+    for (size_t i=0; i<paramCount; ++i) {
+        m_Viewport.position.param[i] = 0.0;
+        m_Viewport.velocity.param[i] = 0.0;
     }
 
-    m_Viewport.position[2] = -1.0;
+    m_Viewport.position.zoom = -1.0f;
+
+    m_Viewport.position.julia[0] = 0.7885f;
+    m_Viewport.position.julia[1] = 0.0f;
 
     return 0;
 }
@@ -142,53 +153,68 @@ int AcidbrotApp::loop (double dt) {
     if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         return 1;
     }
-    if (glfwGetKey(m_Window, GLFW_KEY_Q) == GLFW_PRESS) {
-        return 1;
-    }
 
     // ................................
     // Input
+    size_t   paramCount = sizeof(Viewport) / sizeof(double);
+    Viewport control;
 
-    std::array<double, 6> rawVelocity = {0.0, 0.0, 0.0, 0.0};
+    for (size_t i=0; i<paramCount; ++i) {
+        control.param[i] = 0.0;
+    }
 
+    // Lateral navigation
     if (glfwGetKey(m_Window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-        rawVelocity[0] = -1.0;
+        control.position[0] = -1.0;
     }
     if (glfwGetKey(m_Window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-        rawVelocity[0] = +1.0;
+        control.position[0] = +1.0;
     }
     if (glfwGetKey(m_Window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        rawVelocity[1] = -1.0;
+        control.position[1] = -1.0;
     }
     if (glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS) {
-        rawVelocity[1] = +1.0;
+        control.position[1] = +1.0;
     }
 
-    if (glfwGetKey(m_Window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-        rawVelocity[2] = -1.0;
-    }
-    if (glfwGetKey(m_Window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
-        rawVelocity[2] = +1.0;
-    }
-
-    if (glfwGetKey(m_Window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
-        rawVelocity[3] = -1.0f;
-    }
-    if (glfwGetKey(m_Window, GLFW_KEY_PAGE_UP) == GLFW_PRESS) {
-        rawVelocity[3] = +1.0f;
-    }
-
-    if (glfwGetKey(m_Window, GLFW_KEY_A) == GLFW_PRESS) {
-        rawVelocity[4] = -1.0;
-    }
+    // Rotation
     if (glfwGetKey(m_Window, GLFW_KEY_D) == GLFW_PRESS) {
-        rawVelocity[4] = +1.0;
+        control.rotation = -1.0;
     }
+    if (glfwGetKey(m_Window, GLFW_KEY_A) == GLFW_PRESS) {
+        control.rotation = +1.0;
+    }
+
+    // Zooming
     if (glfwGetKey(m_Window, GLFW_KEY_S) == GLFW_PRESS) {
-        rawVelocity[5] = -1.0;
+        control.zoom = -1.0;
     }
     if (glfwGetKey(m_Window, GLFW_KEY_W) == GLFW_PRESS) {
-        rawVelocity[5] = +1.0;
+        control.zoom = +1.0;
+    }
+
+    // Colorization
+    if (glfwGetKey(m_Window, GLFW_KEY_Z) == GLFW_PRESS) {
+        control.color = -1.0;
+    }
+    if (glfwGetKey(m_Window, GLFW_KEY_C) == GLFW_PRESS) {
+        control.color = +1.0;
+    }
+
+    // Julia set abs(C)
+    if (glfwGetKey(m_Window, GLFW_KEY_1) == GLFW_PRESS) {
+        control.julia[0] = -1.0;
+    }
+    if (glfwGetKey(m_Window, GLFW_KEY_3) == GLFW_PRESS) {
+        control.julia[0] = +1.0;
+    }
+
+    // Julia set angle(C)
+    if (glfwGetKey(m_Window, GLFW_KEY_Q) == GLFW_PRESS) {
+        control.julia[1] = -1.0;
+    }
+    if (glfwGetKey(m_Window, GLFW_KEY_E) == GLFW_PRESS) {
+        control.julia[1] = +1.0;
     }
 
     // ................................
@@ -196,35 +222,57 @@ int AcidbrotApp::loop (double dt) {
     {
         const double k = 0.90;
 
-        // More zoom = slower
-        float zoom = powf(2.0, m_Viewport.position[2]);
-        rawVelocity[0] /= zoom;
-        rawVelocity[1] /= zoom;
+        // More zoom -> slower lateral motion
+        float zoom = powf(2.0, m_Viewport.position.zoom);
+        control.position[0] /= zoom;
+        control.position[1] /= zoom;
 
-        rawVelocity[3] *= 0.2f;
-        rawVelocity[2] *= 2.0f;
-        rawVelocity[4] *= 0.1f;
-        rawVelocity[5] *= 0.1f;
+        // Rotate lateral motion vector
+        float s = sinf(m_Viewport.position.rotation);
+        float c = cosf(m_Viewport.position.rotation);
+
+        std::array<double, 2> newPosition;
+        newPosition[0] = c * control.position[0] - s * control.position[1];
+        newPosition[1] = s * control.position[0] + c * control.position[1];
+        control.position = newPosition;
+
+        // Rotation speed
+        control.rotation *= 0.5f;
+
+        // Zooming speed
+        control.zoom  *= 2.0f;
+
+        // Colorization speed
+        control.color *= 0.2f;
+
+        // Julia set abs(C), angle(C)
+        control.julia[0] *= 0.2f;
+        control.julia[1] *= 0.2f;
 
         // Filter velocity
-        for (size_t i=0; i<6; ++i) {
-            m_Viewport.velocity[i] = m_Viewport.velocity[i] * k + rawVelocity[i] * (1.0 - k);
+        for (size_t i=0; i<paramCount; ++i) {
+            m_Viewport.velocity.param[i] = m_Viewport.velocity.param[i] * k +
+                                           control.param[i] * (1.0 - k);
         }
-        m_Viewport.velocity[3] = rawVelocity[3];
 
-        // Move viewport
-        for (size_t i=0; i<6; ++i) {
-            m_Viewport.position[i] += m_Viewport.velocity[i] * dt;
+        // Move the viewport
+        for (size_t i=0; i<paramCount; ++i) {
+            m_Viewport.position.param[i] += m_Viewport.velocity.param[i] * dt;
         }
 
         // Zooming more makes no sense due to precision
         double maxZoom = (m_HaveFp64) ? 44.0f : 15.0f;
-        if (m_Viewport.position[2] > maxZoom) {
-            m_Viewport.position[2] = maxZoom;
+        if (m_Viewport.position.zoom > maxZoom) {
+            m_Viewport.position.zoom = maxZoom;
         }
 
-        if (m_Viewport.position[2] < -1.0f) {
-            m_Viewport.position[2] = -1.0f;
+        if (m_Viewport.position.zoom < -1.0f) {
+            m_Viewport.position.zoom = -1.0f;
+        }
+
+        // No negative abs(C)
+        if (m_Viewport.position.julia[0] < 0.0f) {
+            m_Viewport.position.julia[0] = 0.0f;
         }
     }
 
@@ -246,20 +294,30 @@ int AcidbrotApp::loop (double dt) {
         GL::Framebuffer* framebuffer = m_Framebuffers.at("fractalRaw").get();
         framebuffer->enable();
 
-        GL::ShaderProgram* shaderProgram = m_Shaders.at("mandelbrot").get();
+        GL::ShaderProgram* shaderProgram = m_Shaders.at("julia").get();
         GL_CHECK(glUseProgram(shaderProgram->get()));
 
-        GL_CHECK(glUniform2f(shaderProgram->getUniformLocation("fractalPos"),
-                    m_Viewport.position[0],
-                    m_Viewport.position[1]
+        float juliaC[2] = {
+            m_Viewport.position.julia[0] * cosf(m_Viewport.position.julia[1]),
+            m_Viewport.position.julia[0] * sinf(m_Viewport.position.julia[1])
+        };
+
+        GL_CHECK(glUniform2f(shaderProgram->getUniformLocation("fractalPosition"),
+                    m_Viewport.position.position[0],
+                    m_Viewport.position.position[1]
                     ));
 
-        GL_CHECK(glUniform1f(shaderProgram->getUniformLocation("fractalAngle"),
-                    m_Viewport.position[4]
+        GL_CHECK(glUniform1f(shaderProgram->getUniformLocation("fractalRotation"),
+                    m_Viewport.position.rotation
                     ));
 
         GL_CHECK(glUniform1f(shaderProgram->getUniformLocation("fractalScale"),
-                    pow(2.0, m_Viewport.position[2])
+                    pow(2.0, m_Viewport.position.zoom)
+                    ));
+
+        GL_CHECK(glUniform2f(shaderProgram->getUniformLocation("fractalCoeff"),
+                    juliaC[0],
+                    juliaC[1]
                     ));
 
         GL_CHECK(glDisable(GL_BLEND));
@@ -340,7 +398,7 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_Textures.at("colormap")->get()));
         GL_CHECK(glUniform1i(shader->getUniformLocation("colormap"), 1));
 
-        GL_CHECK(glUniform1f(shader->getUniformLocation("colormapPos"), m_Viewport.position[3]));
+        GL_CHECK(glUniform1f(shader->getUniformLocation("colormapPos"), m_Viewport.position.color));
 
         // Render
         GL::drawFullscreenRect();
@@ -398,10 +456,10 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 0, 0, 0.75f));
         m_Fonts.at("generic")->drawText(2, viewport[3] - 16-2, "Frame rate: %.1f FPS", getFrameRate());
 
-        GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 1, 1, 0.75f));
+/*        GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 1, 1, 0.75f));
         m_Fonts.at("generic")->drawText(2, viewport[3] - 32-2, stringf("X:%.15f Y:%.15f Z:%.3f C:%.15f (%.15f, %.15f)",
             m_Viewport.position[0], m_Viewport.position[1], m_Viewport.position[2], m_Viewport.position[3], m_Viewport.position[4], m_Viewport.position[5]));
-
+*/
         GL_CHECK(glUseProgram(0));
     }
 

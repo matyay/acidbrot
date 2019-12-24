@@ -19,7 +19,6 @@ public:
 
     /// Public constructor
     AcidbrotApp ();
-    /// Destructor
 
 protected:
 
@@ -42,15 +41,27 @@ protected:
     /// OpenGL framebuffers
     GL::Map<GL::Framebuffer>    m_Framebuffers;
 
-    // Have fp64 shader extension
+    /// Have fp64 shader extension
     bool m_HaveFp64 = false;
+
+    /// Viewport data
+    union Viewport {
+
+        struct {
+            std::array<double, 2>   position;
+            double                  rotation;
+            double                  zoom;
+            double                  color;
+            std::array<double, 2>   julia;
+        };
+
+        double param[];
+    };
 
     // Viewport
     struct {
-
-        // Position and velocity X(re), Y(im), Z(zoom), C(color), Re, Im
-        std::array<double, 6>   position;
-        std::array<double, 6>   velocity;
+        Viewport position;
+        Viewport velocity;
     } m_Viewport;
 
 };
