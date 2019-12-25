@@ -204,6 +204,8 @@ int AcidbrotApp::initializeFramebuffers () {
     int fbWidth, fbHeight;
     glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
 
+    m_Logger->info("Framebuffer size ({}, {})", fbWidth, fbHeight);
+
     // ..........................................
 
     m_Framebuffers["fractalRaw"] = std::unique_ptr<GL::Framebuffer>(
@@ -259,6 +261,14 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
                            int a_Action, 
                            int a_Mods) 
 {
+    // Fullscreen / windowed
+    if ( a_Key == GLFW_KEY_ENTER && 
+        (a_Mods & GLFW_MOD_ALT) && 
+         a_Action == GLFW_PRESS)
+    {
+        setFullscreen(a_Window, !isFullscreen(a_Window));
+    }
+
     // Switch fractal
     if (a_Key == GLFW_KEY_F && a_Action == GLFW_PRESS) {
         if (m_Fractal == Fractal::Mandelbrot) {
@@ -290,6 +300,11 @@ int AcidbrotApp::loop (double dt) {
     // Escape
     if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         return 1;
+    }
+
+    // Window size changed
+    if (sizeChanged(m_Window)) {
+        initializeFramebuffers();
     }
 
     // ................................

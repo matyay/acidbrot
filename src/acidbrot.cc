@@ -8,10 +8,17 @@
 
 int main (int argc, char* argv[]) {
 
+    (void)argc;
+    (void)argv;
+    
     spdlog::set_pattern("%n: %^%v%$");
     spdlog::set_level(spdlog::level::debug);
 
     auto logger = spdlog::stderr_color_mt("master");
+    logger->info("spdlog v{}.{}.{}", SPDLOG_VER_MAJOR,
+                                     SPDLOG_VER_MINOR,
+                                     SPDLOG_VER_PATCH);
+
     int  exitCode = 0;
 
     try {

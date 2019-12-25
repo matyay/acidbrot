@@ -14,20 +14,100 @@ GLFWApp::GLFWApp ()
 // ============================================================================
 
 void GLFWApp::addWindow (GLFWwindow* a_Window) {
+
+    // Create and fill window context
+    WindowContext context;
+    context.window      = a_Window;
+    context.sizeChanged = false;
+
+    glfwGetWindowPos (a_Window, &context.position[0], &context.position[1]);
+    glfwGetWindowSize(a_Window, &context.size[0],     &context.size[1]);
+
+    glfwGetFramebufferSize(a_Window, &context.fbSize[0], &context.fbSize[1]);
+
+    // Set user pointer
     glfwSetWindowUserPointer(a_Window, (void*)this);
-    m_Windows.push_back(a_Window);
+
+    // Add to the list
+    m_Windows[a_Window] = context;
+
+    m_Logger->info("window[{}]: pos=({}, {}), size=({}, {}), fbSize=({}, {})",
+        (void*)a_Window,
+        context.position[0], context.position[1],
+        context.size[0],     context.size[1],
+        context.fbSize[0],   context.fbSize[1]);
 }
 
 bool GLFWApp::allWindowsClosed () {
 
     // Check if any of the windows is still open
-    for (auto& window : m_Windows) {
-        if (!glfwWindowShouldClose(window)) {
+    for (auto& pair : m_Windows) {
+        if (!glfwWindowShouldClose(pair.first)) {
             return false;
         }
     }
 
     return true;
+}
+
+bool GLFWApp::isFullscreen (GLFWwindow* a_Window) {
+    return (glfwGetWindowMonitor(a_Window) != nullptr);
+}
+
+void GLFWApp::setFullscreen (GLFWwindow* a_Window, bool a_Fullscreen) {
+
+    // Already set
+    if (isFullscreen(a_Window) == a_Fullscreen) {
+        return;
+    }
+
+    // Get context
+    auto& context = m_Windows.at(a_Window);
+
+    // Set to fullscreen
+    if (a_Fullscreen) {
+
+        // Save position and size
+        glfwGetWindowPos (a_Window, &context.position[0], &context.position[1]);
+        glfwGetWindowSize(a_Window, &context.size[0],     &context.size[1]);
+       
+        // Get resolution of monitor
+        // TODO: Select monitor ?
+        GLFWmonitor*       monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* mode    = glfwGetVideoMode(monitor);
+
+        // Switch to full screen
+        glfwSetWindowMonitor(a_Window, monitor, 0, 0, mode->width, mode->height, 0);
+
+        m_Logger->info("window[{}]: fullscreen, monitor='{}', size=({}, {})",
+                (void*)a_Window, glfwGetMonitorName(monitor),
+                mode->width, mode->height);
+    }
+    // Switch to windowed
+    else {
+
+        glfwSetWindowMonitor(a_Window, nullptr,
+            context.position[0], context.position[1],
+            context.size[0], context.size[1],
+            0);
+
+        m_Logger->info("window[{}]: windowed, pos=({}, {}), size=({}, {})",
+            (void*)a_Window,
+            context.position[0], context.position[1],
+            context.size[0],     context.size[1]
+            );
+    }
+
+    context.sizeChanged = true;
+}
+
+bool GLFWApp::sizeChanged (GLFWwindow* a_Window) {
+    auto& context = m_Windows.at(a_Window);
+
+    bool res = context.sizeChanged;
+    context.sizeChanged = false;
+
+    return res;
 }
 
 // ============================================================================
