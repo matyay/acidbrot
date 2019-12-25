@@ -1,3 +1,4 @@
+#define EXPONENT 3
 precision highp float;
 
 varying vec2 v_TexCoord;
@@ -40,15 +41,18 @@ void main(void) {
 
     // Evaluate
     for (int i=0; i<MAX_ITER; ++i) {
-
         REAL xx = z.x * z.x;
         REAL yy = z.y * z.y;
-
-        z = VEC2(xx - yy, 2.0 * z.x*z.y) + c;
 
         if ((xx + yy) > B*B) {
             break;
         }
+
+#if   (EXPONENT == 2)
+        z = VEC2(xx - yy, 2.0 * z.x*z.y) + c;
+#elif (EXPONENT == 3)
+        z = VEC2(z.x*(xx - 3.0*yy), z.y*(3.0*xx - yy)) + c;
+#endif
 
         n += 1.0;
     }
@@ -60,7 +64,7 @@ void main(void) {
     }
 
     // Smoothing
-    n -= log2(log2(dot(z, z))) - 4.0;
+    n -= log(log(length(z)) / log(B)) / log(EXPONENT);
     n  = clamp(n, 0.0, float(MAX_ITER));
 
     // Store iteration count

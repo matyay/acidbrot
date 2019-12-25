@@ -22,7 +22,7 @@ AcidbrotApp::AcidbrotApp () :
 // ============================================================================
 
 int AcidbrotApp::initialize () {
-    m_Logger->info("Init");
+    m_Logger->info("Initializing app...");
 
     // Hints
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -114,19 +114,16 @@ int AcidbrotApp::initialize () {
 
     // ..........................................
 
-    m_Framebuffers["fractalRaw"] = std::unique_ptr<GL::Framebuffer>(
-        new GL::Framebuffer(1280, 700, GL_RGBA, 1, false)
-    );
-
-    m_Framebuffers["fractalFlt"] = std::unique_ptr<GL::Framebuffer>(
-        new GL::Framebuffer(1280, 700, GL_RGBA, 1, false)
+    m_Textures["colormap"]  = std::unique_ptr<GL::Texture>(
+        new GL::Texture("media/colormap.png", GL_LINEAR, GL_MIRRORED_REPEAT)
     );
 
     // ..........................................
 
-    m_Textures["colormap"]  = std::unique_ptr<GL::Texture>(
-        new GL::Texture("media/colormap.png", GL_LINEAR, GL_MIRRORED_REPEAT)
-    );
+    int res = initializeFramebuffers();
+    if (res) {
+        return res;
+    }
 
     // ..........................................
 
@@ -141,6 +138,25 @@ int AcidbrotApp::initialize () {
 
     m_Viewport.position.julia[0] = 0.7885f;
     m_Viewport.position.julia[1] = 0.0f;
+
+    return 0;
+}
+
+int AcidbrotApp::initializeFramebuffers () {
+
+    // Get the main framebuffer size
+    int fbWidth, fbHeight;
+    glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
+
+    // ..........................................
+
+    m_Framebuffers["fractalRaw"] = std::unique_ptr<GL::Framebuffer>(
+        new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
+    );
+
+    m_Framebuffers["fractalFlt"] = std::unique_ptr<GL::Framebuffer>(
+        new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
+    );
 
     return 0;
 }
@@ -279,11 +295,12 @@ int AcidbrotApp::loop (double dt) {
     // ................................
     // Initialize GL rendering
 
-    int winWidth, winHeight;
-    glfwGetFramebufferSize(m_Window, &winWidth, &winHeight);
+    // Get the main framebuffer size
+    int fbWidth, fbHeight;
+    glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
 
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-    GL_CHECK(glViewport(0, 0, winWidth, winHeight));
+    GL_CHECK(glViewport(0, 0, fbWidth, fbHeight));
 
     GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
@@ -298,8 +315,8 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUseProgram(shaderProgram->get()));
 
         float juliaC[2] = {
-            m_Viewport.position.julia[0] * cosf(m_Viewport.position.julia[1]),
-            m_Viewport.position.julia[0] * sinf(m_Viewport.position.julia[1])
+            (float)m_Viewport.position.julia[0] * cosf(m_Viewport.position.julia[1]),
+            (float)m_Viewport.position.julia[0] * sinf(m_Viewport.position.julia[1])
         };
 
         GL_CHECK(glUniform2f(shaderProgram->getUniformLocation("fractalPosition"),
@@ -355,8 +372,8 @@ int AcidbrotApp::loop (double dt) {
         for (int j=0; j<=2; ++j) {
             for (int i=0; i<=2; ++i) {
                 int ii = 2 * (j*3 + i);
-                offsets[ii+0] = (float)(i - 1) / (float)winWidth;
-                offsets[ii+1] = (float)(j - 1) / (float)winHeight;
+                offsets[ii+0] = (float)(i - 1) / (float)fbDst->getWidth();
+                offsets[ii+1] = (float)(j - 1) / (float)fbDst->getHeight();
             }
         }
 

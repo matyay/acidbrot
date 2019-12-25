@@ -29,6 +29,11 @@ protected:
 
     // ..........................................
 
+    /// Initializes / Reinitializes framebuffers
+    int initializeFramebuffers ();
+
+    // ..........................................
+
     /// Main window
     GLFWwindow* m_Window = nullptr;
 

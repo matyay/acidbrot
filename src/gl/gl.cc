@@ -1,6 +1,7 @@
 #include "gl.hh"
 
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <sstream>
 
 namespace GL {
 
@@ -19,8 +20,20 @@ bool isExtensionAvailable (const std::string& a_Name) {
         return false;
     }
 
-    // Check for the one
-    return (std::string(extensions).find(a_Name) != std::string::npos);
+    // Get list of extensions
+    const std::string extensionsStr(extensions);
+    std::stringstream ss(extensionsStr);
+
+    // Find the interesting one
+    std::string word;
+    while (ss >> word) {
+        if (word == a_Name) {
+            return true;
+        }
+    }
+
+    // Not found
+    return false;
 }
 
 }; // GL
