@@ -23,11 +23,9 @@ void main(void) {
         asum += pel.a;
     }
 
-    nsum  = abs(nsum);
+    nsum  = sqrt(abs(nsum));
     asum /= float(TAPS);
 
-    float p = floor(nsum);
-    float q = nsum - p;
-    o_Color = vec4(p / 255.0, q, 0.0, asum);
+    o_Color = vec4(nsum, 0.0, 0.0, asum);
 }
 

@@ -94,6 +94,7 @@ int AcidbrotApp::initialize () {
     GL::Shader fshColorizer    ("shaders/colorizer.fsh",       GL_FRAGMENT_SHADER);
     GL::Shader fshDespeckle    ("shaders/despeckle.fsh",       GL_FRAGMENT_SHADER);
     GL::Shader fshFir3x3Abs    ("shaders/edges.fsh",           GL_FRAGMENT_SHADER, {{"TAPS", "9"}});
+    GL::Shader fshHalo         ("shaders/halo.fsh",            GL_FRAGMENT_SHADER);
 
     m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
 
@@ -125,6 +126,12 @@ int AcidbrotApp::initialize () {
         vshGeneric,
         fshFir3x3Abs,
         "edges"
+        ));
+
+    m_Shaders["halo"]       = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+        vshGeneric,
+        fshHalo,
+        "halo"
         ));
 
     //GL::Shader vshGeometry ("shaders/temp/geometry.vsh", GL_VERTEX_SHADER);
@@ -202,6 +209,10 @@ int AcidbrotApp::initializeFramebuffers () {
     );
 
     m_Framebuffers["fractalEdges"] = std::unique_ptr<GL::Framebuffer>(
+        new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
+    );
+
+    m_Framebuffers["fractalColor"] = std::unique_ptr<GL::Framebuffer>(
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
 
@@ -507,14 +518,16 @@ int AcidbrotApp::loop (double dt) {
     // ................................
     // Colorize the fractal
     {
-        GL::Framebuffer*   framebuffer = m_Framebuffers.at("fractalEdges").get();
-        GL::ShaderProgram* shader      = m_Shaders.at("colorizer").get();
+        GL::ShaderProgram* shader = m_Shaders.at("colorizer").get();
+        GL::Framebuffer*   fbSrc  = m_Framebuffers.at("fractalFlt").get();
+        GL::Framebuffer*   fbDst  = m_Framebuffers.at("fractalColor").get();
 
         // Setup
+        fbDst->enable();
         GL_CHECK(glUseProgram(shader->get()));
 
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, framebuffer->getTexture()));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
         GL_CHECK(glUniform1i(shader->getUniformLocation("fractal"), 0));
 
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
@@ -533,8 +546,38 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 
         GL_CHECK(glUseProgram(0));
+        fbDst->disable();
     }
 
+    // ................................
+    // Render with halo effct
+    {
+        GL::ShaderProgram* shader  = m_Shaders.at("halo").get();
+        GL::Framebuffer*   fbColor = m_Framebuffers.at("fractalColor").get();
+        GL::Framebuffer*   fbMask  = m_Framebuffers.at("fractalEdges").get();
+
+        // Setup
+        GL_CHECK(glUseProgram(shader->get()));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbColor->getTexture()));
+        GL_CHECK(glUniform1i(shader->getUniformLocation("texture"), 0));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE1));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbMask->getTexture()));
+        GL_CHECK(glUniform1i(shader->getUniformLocation("haloMask"), 1));
+
+        // Render
+        GL::drawFullscreenRect();
+
+        // Cleanup
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+        GL_CHECK(glActiveTexture(GL_TEXTURE1));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+
+        GL_CHECK(glUseProgram(0));
+    }
 
     // ................................
     // Geometry

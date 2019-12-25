@@ -18,8 +18,10 @@ void main(void) {
     float n = f.r * 255.0 + f.g;
 
     // Skip pixels belonging to the fractal set
-    if (f.a < 0.01)
-        discard;
+    if (f.a < 0.01) {
+        o_Color = vec4(0.0, 0.0, 0.0, 0.0);
+        return;
+    }
 
     // Color mapping
     float m = n / 50.0;
