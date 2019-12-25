@@ -1,4 +1,4 @@
-#define EXPONENT 3
+#define EXPONENT 2
 precision highp float;
 
 varying vec2 v_TexCoord;
@@ -52,6 +52,8 @@ void main(void) {
         z = VEC2(xx - yy, 2.0 * z.x*z.y) + c;
 #elif (EXPONENT == 3)
         z = VEC2(z.x*(xx - 3.0*yy), z.y*(3.0*xx - yy)) + c;
+#elif (EXPONENT == 4)
+        z = VEC2(xx*(xx-3.0*yy) - yy*(3.0*xx-yy), 4.0*z.x*z.y*(xx - yy) ) + c;
 #endif
 
         n += 1.0;
