@@ -32,6 +32,13 @@ protected:
     /// Initializes / Reinitializes framebuffers
     int initializeFramebuffers ();
 
+    /// Keyboard callback
+    void keyCallback (GLFWwindow* a_Window,
+                      int a_Key, 
+                      int a_Scancode, 
+                      int a_Action, 
+                      int a_Mods);
+
     // ..........................................
 
     /// Main window
@@ -63,12 +70,29 @@ protected:
         double param[];
     };
 
-    // Viewport
+    /// Fractal type
+    enum class Fractal {
+        Mandelbrot,
+        Julia
+    };
+
+    /// Viewport
     struct {
         Viewport position;
         Viewport velocity;
     } m_Viewport;
 
+    /// Fractal type
+    Fractal m_Fractal = Fractal::Mandelbrot;
+
+    // ..........................................
+
+    /// Static Keyboard callback
+    static void _keyCallback (GLFWwindow* a_Window,
+                              int a_Key, 
+                              int a_Scancode, 
+                              int a_Action, 
+                              int a_Mods);
 };
 
 #endif // ACIDBROT_APP_HH

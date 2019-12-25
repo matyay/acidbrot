@@ -14,6 +14,7 @@ GLFWApp::GLFWApp ()
 // ============================================================================
 
 void GLFWApp::addWindow (GLFWwindow* a_Window) {
+    glfwSetWindowUserPointer(a_Window, (void*)this);
     m_Windows.push_back(a_Window);
 }
 

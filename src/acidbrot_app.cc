@@ -21,6 +21,24 @@ AcidbrotApp::AcidbrotApp () :
 
 // ============================================================================
 
+void AcidbrotApp::_keyCallback (GLFWwindow* a_Window,
+                                int a_Key, 
+                                int a_Scancode, 
+                                int a_Action, 
+                                int a_Mods)
+{
+    // Retreive window's user pointer.
+    AcidbrotApp* app = (AcidbrotApp*)glfwGetWindowUserPointer(a_Window);
+    if (app == nullptr) {
+        return;
+    }
+
+    // Invoke the member method
+    app->keyCallback(a_Window, a_Key, a_Scancode, a_Action, a_Mods);
+}
+
+// ============================================================================
+
 int AcidbrotApp::initialize () {
     m_Logger->info("Initializing app...");
 
@@ -42,6 +60,7 @@ int AcidbrotApp::initialize () {
     }
 
     addWindow(m_Window);
+    glfwSetKeyCallback(m_Window, AcidbrotApp::_keyCallback);
 
     // Set OpenGL context
     glfwMakeContextCurrent(m_Window);    
@@ -162,6 +181,22 @@ int AcidbrotApp::initializeFramebuffers () {
 }
 
 // ============================================================================
+
+void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
+                           int a_Key, 
+                           int a_Scancode, 
+                           int a_Action, 
+                           int a_Mods) 
+{
+    if (a_Key == GLFW_KEY_F && a_Action == GLFW_PRESS) {
+        if (m_Fractal == Fractal::Mandelbrot) {
+            m_Fractal = Fractal::Julia;
+        }
+        else if (m_Fractal == Fractal::Julia) {
+            m_Fractal = Fractal::Mandelbrot;
+        }
+    }
+}
 
 int AcidbrotApp::loop (double dt) {
 
@@ -308,31 +343,36 @@ int AcidbrotApp::loop (double dt) {
     // ................................
     // Generate the fractal data
     {
+        const std::map<Fractal, std::string> shaderName = {
+            {Fractal::Mandelbrot, "mandelbrot"},
+            {Fractal::Julia, "julia"}
+        };
+
         GL::Framebuffer* framebuffer = m_Framebuffers.at("fractalRaw").get();
         framebuffer->enable();
 
-        GL::ShaderProgram* shaderProgram = m_Shaders.at("julia").get();
-        GL_CHECK(glUseProgram(shaderProgram->get()));
+        GL::ShaderProgram* shader = m_Shaders.at(shaderName.at(m_Fractal)).get();
+        GL_CHECK(glUseProgram(shader->get()));
 
         float juliaC[2] = {
             (float)m_Viewport.position.julia[0] * cosf(m_Viewport.position.julia[1]),
             (float)m_Viewport.position.julia[0] * sinf(m_Viewport.position.julia[1])
         };
 
-        GL_CHECK(glUniform2f(shaderProgram->getUniformLocation("fractalPosition"),
+        GL_CHECK(glUniform2f(shader->getUniformLocation("fractalPosition"),
                     m_Viewport.position.position[0],
                     m_Viewport.position.position[1]
                     ));
 
-        GL_CHECK(glUniform1f(shaderProgram->getUniformLocation("fractalRotation"),
+        GL_CHECK(glUniform1f(shader->getUniformLocation("fractalRotation"),
                     m_Viewport.position.rotation
                     ));
 
-        GL_CHECK(glUniform1f(shaderProgram->getUniformLocation("fractalScale"),
+        GL_CHECK(glUniform1f(shader->getUniformLocation("fractalScale"),
                     pow(2.0, m_Viewport.position.zoom)
                     ));
 
-        GL_CHECK(glUniform2f(shaderProgram->getUniformLocation("fractalCoeff"),
+        GL_CHECK(glUniform2f(shader->getUniformLocation("fractalCoeff"),
                     juliaC[0],
                     juliaC[1]
                     ));
