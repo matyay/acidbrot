@@ -93,6 +93,7 @@ int AcidbrotApp::initialize () {
     GL::Shader fshJulia        ("shaders/mandelbrot32.fsh",    GL_FRAGMENT_SHADER, {{"JULIA", "1"}});
     GL::Shader fshColorizer    ("shaders/colorizer.fsh",       GL_FRAGMENT_SHADER);
     GL::Shader fshDespeckle    ("shaders/despeckle.fsh",       GL_FRAGMENT_SHADER);
+    GL::Shader fshFir3x3Abs    ("shaders/edges.fsh",           GL_FRAGMENT_SHADER, {{"TAPS", "9"}});
 
     m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
 
@@ -120,6 +121,12 @@ int AcidbrotApp::initialize () {
         "despeckle"
         ));
 
+    m_Shaders["edges"]      = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+        vshGeneric,
+        fshFir3x3Abs,
+        "edges"
+        ));
+
     //GL::Shader vshGeometry ("shaders/temp/geometry.vsh", GL_VERTEX_SHADER);
     //GL::Shader gshGeometry ("shaders/temp/geometry.gsh", GL_GEOMETRY_SHADER);
     //GL::Shader fshGeometry ("shaders/temp/geometry.fsh", GL_FRAGMENT_SHADER);
@@ -130,6 +137,23 @@ int AcidbrotApp::initialize () {
         "geometry"
         ));
 */
+
+    // ..........................................
+
+    FilterMask* mask = nullptr;
+
+    mask = new FilterMask(3, 3);
+    mask->w(0, 0) = -0.5f;
+    mask->w(0, 1) = -1.0f;
+    mask->w(0, 2) = -0.5f;
+    mask->w(1, 0) = -1.0f;
+    mask->w(1, 1) = +6.0f;
+    mask->w(1, 2) = -1.0f;
+    mask->w(2, 0) = -0.5f;
+    mask->w(2, 1) = -1.0f;
+    mask->w(2, 2) = -0.5f;
+    mask->normalizeWeights();
+    m_Masks["edges"].reset(mask);
 
     // ..........................................
 
@@ -176,6 +200,16 @@ int AcidbrotApp::initializeFramebuffers () {
     m_Framebuffers["fractalFlt"] = std::unique_ptr<GL::Framebuffer>(
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
+
+    m_Framebuffers["fractalEdges"] = std::unique_ptr<GL::Framebuffer>(
+        new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
+    );
+
+    // ..........................................
+
+    for (auto& pair : m_Masks) {
+        pair.second->computeOffsets(fbWidth, fbHeight);
+    }
 
     return 0;
 }
@@ -439,9 +473,41 @@ int AcidbrotApp::loop (double dt) {
     }
 
     // ................................
+    // Detect edges in the fractal image
+    {
+        GL::ShaderProgram* shader = m_Shaders.at("edges").get();
+        GL::Framebuffer*   fbSrc  = m_Framebuffers.at("fractalFlt").get();
+        GL::Framebuffer*   fbDst  = m_Framebuffers.at("fractalEdges").get();
+
+        // Setup
+        fbDst->enable();
+        GL_CHECK(glUseProgram(shader->get()));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
+
+        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"), 9, 
+                    m_Masks.at("edges")->getWeights()
+                    ));
+        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"), 9,
+                    m_Masks.at("edges")->getOffsets()
+                    ));
+
+        // Render
+        GL::drawFullscreenRect();
+
+        // Cleanup
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+
+        GL_CHECK(glUseProgram(0));
+        fbDst->disable();
+    }
+
+    // ................................
     // Colorize the fractal
     {
-        GL::Framebuffer*   framebuffer = m_Framebuffers.at("fractalFlt").get();
+        GL::Framebuffer*   framebuffer = m_Framebuffers.at("fractalEdges").get();
         GL::ShaderProgram* shader      = m_Shaders.at("colorizer").get();
 
         // Setup

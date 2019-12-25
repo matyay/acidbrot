@@ -8,6 +8,7 @@
 #include <gl/framebuffer.hh>
 
 #include "glfw_app.hh"
+#include "filter_mask.hh"
 
 #include <array>
 
@@ -52,6 +53,8 @@ protected:
     GL::Map<GL::Texture>        m_Textures;
     /// OpenGL framebuffers
     GL::Map<GL::Framebuffer>    m_Framebuffers;
+
+    GL::Map<FilterMask>         m_Masks;
 
     /// Have fp64 shader extension
     bool m_HaveFp64 = false;
