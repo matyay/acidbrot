@@ -147,6 +147,12 @@ int AcidbrotApp::initialize () {
 
     // ..........................................
 
+    m_ShaderParams.push_back(ShaderParam("haloStepFac", 0.9875, 0.5, 1.0, 0.025));
+    m_ShaderParams.push_back(ShaderParam("haloAttnFac", 0.9250, 0.5, 1.0, 0.100));
+    m_ShaderParams.push_back(ShaderParam("haloGain",    1.0000, 0.5, 5.0, 1.000));
+
+    // ..........................................
+
     FilterMask* mask = nullptr;
 
     mask = new FilterMask(3, 3);
@@ -225,6 +231,26 @@ int AcidbrotApp::initializeFramebuffers () {
     return 0;
 }
 
+void AcidbrotApp::setUniforms () {
+
+    // Get current shader
+    GLint shader;
+    GL_CHECK(glGetIntegerv(GL_CURRENT_PROGRAM, &shader));
+
+    // Set uniforms if available
+    for (auto& param : m_ShaderParams) {
+
+        // Get location
+        GLint loc = glGetUniformLocation(shader, param.name.c_str());
+        if (loc == -1) {
+            continue;
+        }
+
+        // Set value
+        glUniform1f(loc, param.value);
+    }
+}
+
 // ============================================================================
 
 void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
@@ -233,12 +259,28 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
                            int a_Action, 
                            int a_Mods) 
 {
+    // Switch fractal
     if (a_Key == GLFW_KEY_F && a_Action == GLFW_PRESS) {
         if (m_Fractal == Fractal::Mandelbrot) {
             m_Fractal = Fractal::Julia;
         }
         else if (m_Fractal == Fractal::Julia) {
             m_Fractal = Fractal::Mandelbrot;
+        }
+    }
+
+    // Switch modified parameter
+    if (a_Key == GLFW_KEY_HOME && a_Action == GLFW_PRESS) {
+        m_CurrParam++;
+        if (m_CurrParam >= m_ShaderParams.size()) {
+            m_CurrParam = -1;
+        }
+    }
+
+    if (a_Key == GLFW_KEY_END && a_Action == GLFW_PRESS) {
+        m_CurrParam--;
+        if (m_CurrParam < -1) {
+            m_CurrParam = m_ShaderParams.size() - 1;
         }
     }
 }
@@ -248,6 +290,26 @@ int AcidbrotApp::loop (double dt) {
     // Escape
     if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         return 1;
+    }
+
+    // ................................
+    // Shader parameters
+
+    if (m_CurrParam != -1) {
+        auto& param = m_ShaderParams[m_CurrParam];
+
+        if (glfwGetKey(m_Window, GLFW_KEY_PAGE_UP)   == GLFW_PRESS) {
+            param.value += dt * param.speed;
+            if (param.value > param.max) {
+                param.value = param.max;
+            }
+        }
+        if (glfwGetKey(m_Window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS) {
+            param.value -= dt * param.speed;
+            if (param.value < param.min) {
+                param.value = param.min;
+            }
+        }
     }
 
     // ................................
@@ -567,6 +629,8 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbMask->getTexture()));
         GL_CHECK(glUniform1i(shader->getUniformLocation("haloMask"), 1));
 
+        setUniforms();
+
         // Render
         GL::drawFullscreenRect();
 
@@ -621,6 +685,17 @@ int AcidbrotApp::loop (double dt) {
         // Frame rate
         GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 0, 0, 0.75f));
         m_Fonts.at("generic")->drawText(2, viewport[3] - 16-2, "Frame rate: %.1f FPS", getFrameRate());
+
+        // Shader parameter
+        if (m_CurrParam != -1) {
+            auto& font  = m_Fonts.at("generic");
+            auto& param = m_ShaderParams[m_CurrParam];
+    
+            GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 1, 1, 0.75f));
+            font->drawText(2, viewport[3] - 32-2, stringf(
+                           "%s = %.4f", param.name.c_str(), param.value
+                          ));
+        }
 
 /*        GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 1, 1, 0.75f));
         m_Fonts.at("generic")->drawText(2, viewport[3] - 32-2, stringf("X:%.15f Y:%.15f Z:%.3f C:%.15f (%.15f, %.15f)",

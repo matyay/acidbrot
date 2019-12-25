@@ -6,6 +6,10 @@ varying vec2 v_TexCoord;
 uniform sampler2D texture;
 uniform sampler2D haloMask;
 
+uniform float haloStepFac;
+uniform float haloAttnFac;
+uniform float haloGain;
+
 out vec4 o_Color;
 
 #define STEPS 15
@@ -28,11 +32,11 @@ void main(void) {
         
         halo += pel * a;
 
-        z *= 0.9875;
-        a *= 0.9250;
+        z *= haloStepFac;
+        a *= haloAttnFac;
     }
 
-    halo *= 1.1f;
+    halo *= haloGain;
     halo /= STEPS;
 
     // Final color

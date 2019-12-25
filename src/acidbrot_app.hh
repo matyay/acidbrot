@@ -40,6 +40,9 @@ protected:
                       int a_Action, 
                       int a_Mods);
 
+    /// Sets shader uniforms
+    void setUniforms ();
+
     // ..........................................
 
     /// Main window
@@ -79,6 +82,24 @@ protected:
         Julia
     };
 
+    /// Shader parameter
+    struct ShaderParam {
+        std::string name;
+        float       value;
+
+        float       min, max;
+        float       speed;
+
+        ShaderParam (const std::string& _name, float _value,
+                     float _min, float _max, float _speed=1.0) :
+            name  (_name),
+            value (_value),
+            min   (_min),
+            max   (_max),
+            speed (_speed)
+        {};
+    };
+
     /// Viewport
     struct {
         Viewport position;
@@ -87,6 +108,11 @@ protected:
 
     /// Fractal type
     Fractal m_Fractal = Fractal::Mandelbrot;
+
+    /// Shader parameters
+    std::vector<ShaderParam> m_ShaderParams;
+    /// Currently modified shader param
+    ssize_t m_CurrParam = -1;
 
     // ..........................................
 
