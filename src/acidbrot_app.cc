@@ -150,6 +150,8 @@ int AcidbrotApp::initialize () {
         m_Parameters.insert({a_Parameter.name, a_Parameter});
     };
 
+    addParameter(Parameter("colorGamma",  true,  2.0000, 1.0, 5.0, 1.000));
+    addParameter(Parameter("colorCycles", true,  5.0000, 1.0, 6.0, 1.000));
     addParameter(Parameter("haloStepFac", true,  0.9875, 0.5, 1.0, 0.025));
     addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5, 1.0, 0.100));
     addParameter(Parameter("haloGain",    true,  1.0000, 0.5, 5.0, 1.000));
@@ -637,6 +639,7 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUniform1i(shader->getUniformLocation("colormap"), 1));
 
         GL_CHECK(glUniform1f(shader->getUniformLocation("colormapPos"), m_Viewport.position.color));
+        setUniforms();
 
         // Render
         GL::drawFullscreenRect();
