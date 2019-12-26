@@ -60,6 +60,8 @@ int AcidbrotApp::initialize () {
         return -1;
     }
 
+    center(m_Window, getBestMonitor(m_Window));
+
     addWindow(m_Window);
     glfwSetKeyCallback(m_Window, AcidbrotApp::_keyCallback);
 

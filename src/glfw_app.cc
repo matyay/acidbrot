@@ -72,8 +72,7 @@ void GLFWApp::setFullscreen (GLFWwindow* a_Window, bool a_Fullscreen) {
         glfwGetWindowSize(a_Window, &context.size[0],     &context.size[1]);
        
         // Get resolution of monitor
-        // TODO: Select monitor ?
-        GLFWmonitor*       monitor = glfwGetPrimaryMonitor();
+        GLFWmonitor*       monitor = getBestMonitor(a_Window);
         const GLFWvidmode* mode    = glfwGetVideoMode(monitor);
 
         // Switch to full screen
@@ -108,6 +107,82 @@ bool GLFWApp::sizeChanged (GLFWwindow* a_Window) {
     context.sizeChanged = false;
 
     return res;
+}
+
+// ============================================================================
+
+GLFWmonitor* GLFWApp::getBestMonitor (GLFWwindow* a_Window) {
+
+    auto MIN = [](int a, int b) {
+        return (a > b) ? b : a;
+    };
+    auto MAX = [](int a, int b) {
+        return (a > b) ? a : b;
+    };
+
+    int monitorCount = 0;
+    GLFWmonitor** monitors    = glfwGetMonitors(&monitorCount);
+    GLFWmonitor*  bestMonitor = glfwGetPrimaryMonitor();
+
+    if (monitors == nullptr || monitorCount <= 0) {
+        return bestMonitor;
+    }
+
+    int windowX, windowY, windowWidth, windowHeight;
+    glfwGetWindowSize(a_Window, &windowWidth, &windowHeight);
+    glfwGetWindowPos(a_Window, &windowX, &windowY);
+
+    int bestArea = 0;
+
+    for (int i = 0; i < monitorCount; ++i)
+    {
+        GLFWmonitor *monitor = monitors[i];
+
+        int monitorX, monitorY;
+        glfwGetMonitorPos(monitor, &monitorX, &monitorY);
+
+        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+        if (mode == nullptr) {
+            continue;
+        }
+
+        int areaMinX = MAX(windowX, monitorX);
+        int areaMinY = MAX(windowY, monitorY);
+
+        int areaMaxX = MIN(windowX + windowWidth, monitorX + mode->width);
+        int areaMaxY = MIN(windowY + windowHeight, monitorY + mode->height);
+
+        int area = (areaMaxX - areaMinX) * (areaMaxY - areaMinY);
+
+        if (area > bestArea) {
+            bestArea    = area;
+            bestMonitor = monitor;
+        }
+    }
+
+    return bestMonitor;
+}
+
+void GLFWApp::center (GLFWwindow* a_Window, GLFWmonitor* a_Monitor) {
+
+    // Get the monitor mode
+    const GLFWvidmode* mode = glfwGetVideoMode(a_Monitor);
+    if (mode == nullptr) {
+        return;
+    }
+
+    // Get monitor size
+    int monitorX, monitorY;
+    glfwGetMonitorPos(a_Monitor, &monitorX, &monitorY);
+
+    // Get window size
+    int windowWidth, windowHeight;
+    glfwGetWindowSize(a_Window, &windowWidth, &windowHeight);
+
+    // Center it
+    glfwSetWindowPos(a_Window,
+                     monitorX + (mode->width  - windowWidth ) / 2,
+                     monitorY + (mode->height - windowHeight) / 2);
 }
 
 // ============================================================================
