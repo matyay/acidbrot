@@ -20,18 +20,29 @@ def gen_stripe(cmap_name, width, height):
 
 def main():
     
+#    colormaps = (
+#        "twilight",
+#        "twilight_shifted",
+#        "hsv",
+#        "terrain",
+#        "gist_stern",
+#        "gnuplot",
+#        "gist_rainbow",
+#        "rainbow",
+#        "jet",
+#        "nipy_spectral",
+#        "gist_ncar",
+#    )
+
     colormaps = (
-        "twilight",
-        "twilight_shifted",
-        "hsv",
-        "terrain",
-        "gist_stern",
         "gnuplot",
-        "gist_rainbow",
+        "inferno",
+        "cividis",
+        "viridis",
+        "gist_stern",
+        "gnuplot2",
         "rainbow",
-        "jet",
-        "nipy_spectral",
-        "gist_ncar",
+        "hot",
     )
 
     # Generate

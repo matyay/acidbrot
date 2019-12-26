@@ -232,6 +232,10 @@ int AcidbrotApp::initializeFramebuffers () {
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
 
+    m_Framebuffers["master"] = std::unique_ptr<GL::Framebuffer>(
+        new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
+    );
+
     // ..........................................
 
     for (auto& pair : m_Masks) {
@@ -657,9 +661,10 @@ int AcidbrotApp::loop (double dt) {
     // ................................
     // Render with halo effct
     {
-        GL::ShaderProgram* shader  = m_Shaders.at("halo").get();
-        GL::Framebuffer*   fbColor = m_Framebuffers.at("fractalColor").get();
-        GL::Framebuffer*   fbMask  = m_Framebuffers.at("fractalEdges").get();
+        GL::ShaderProgram* shader   = m_Shaders.at("halo").get();
+        GL::Framebuffer*   fbColor  = m_Framebuffers.at("fractalColor").get();
+        GL::Framebuffer*   fbMask   = m_Framebuffers.at("fractalEdges").get();
+        GL::Framebuffer*   fbMaster = m_Framebuffers.at("master").get();
 
         // Setup
         GL_CHECK(glUseProgram(shader->get()));
@@ -674,6 +679,8 @@ int AcidbrotApp::loop (double dt) {
 
         setUniforms();
 
+        fbMaster->enable();
+
         GL_CHECK(glEnable(GL_BLEND));
         GL_CHECK(glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD));
         GL_CHECK(glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE, GL_ZERO));
@@ -683,6 +690,8 @@ int AcidbrotApp::loop (double dt) {
         GL::drawFullscreenRect();
 
         // Cleanup
+        fbMaster->disable();
+
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
@@ -717,6 +726,20 @@ int AcidbrotApp::loop (double dt) {
         glDisableVertexAttribArray(0);
         GL_CHECK(glUseProgram(0));
     }*/
+
+    // ................................
+    // Copy the master framebuffer
+    {
+        GL::Framebuffer* fbMaster = m_Framebuffers.at("master").get();
+
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fbMaster->get());
+        glDrawBuffer(GL_BACK);
+
+        glBlitFramebuffer(0, 0, fbWidth, fbHeight,
+                          0, 0, fbWidth, fbHeight,
+                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
 
     // ................................
     // Text
