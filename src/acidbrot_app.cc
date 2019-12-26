@@ -147,9 +147,16 @@ int AcidbrotApp::initialize () {
 
     // ..........................................
 
-    m_ShaderParams.push_back(ShaderParam("haloStepFac", 0.9875, 0.5, 1.0, 0.025));
-    m_ShaderParams.push_back(ShaderParam("haloAttnFac", 0.9250, 0.5, 1.0, 0.100));
-    m_ShaderParams.push_back(ShaderParam("haloGain",    1.0000, 0.5, 5.0, 1.000));
+    auto addParameter = [&](const Parameter& a_Parameter) {
+        m_Parameters.insert({a_Parameter.name, a_Parameter});
+    };
+
+    addParameter(Parameter("haloStepFac", true,  0.9875, 0.5, 1.0, 0.025));
+    addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5, 1.0, 0.100));
+    addParameter(Parameter("haloGain",    true,  1.0000, 0.5, 5.0, 1.000));
+    addParameter(Parameter("motionBlur",  false, 0.8500, 0.1, 1.0, 0.500));
+
+    m_CurrParam = m_Parameters.end();
 
     // ..........................................
 
@@ -240,7 +247,12 @@ void AcidbrotApp::setUniforms () {
     GL_CHECK(glGetIntegerv(GL_CURRENT_PROGRAM, &shader));
 
     // Set uniforms if available
-    for (auto& param : m_ShaderParams) {
+    for (auto& pair : m_Parameters) {
+
+        auto& param = pair.second;
+        if (!param.forShader) {
+            continue;
+        }
 
         // Get location
         GLint loc = glGetUniformLocation(shader, param.name.c_str());
@@ -281,18 +293,31 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
 
     // Switch modified parameter
     if (a_Key == GLFW_KEY_HOME && a_Action == GLFW_PRESS) {
-        m_CurrParam++;
-        if (m_CurrParam >= m_ShaderParams.size()) {
-            m_CurrParam = -1;
+        if (m_CurrParam == m_Parameters.end()) {
+            m_CurrParam = m_Parameters.begin();
+        }
+        else {
+            m_CurrParam++;
         }
     }
 
     if (a_Key == GLFW_KEY_END && a_Action == GLFW_PRESS) {
         m_CurrParam--;
-        if (m_CurrParam < -1) {
-            m_CurrParam = m_ShaderParams.size() - 1;
-        }
     }
+}
+
+std::array<float, 2> splitDouble (double x) {
+    float a = (float)x;
+    float b = x - (double)a;
+
+    return std::array<float, 2>({a, b});
+}
+
+std::array<double, 2> splitLongDouble (long double x) {
+    double a = (double)x;
+    double b = x - (long double)a;
+
+    return std::array<double, 2>({a, b});
 }
 
 int AcidbrotApp::loop (double dt) {
@@ -310,8 +335,9 @@ int AcidbrotApp::loop (double dt) {
     // ................................
     // Shader parameters
 
-    if (m_CurrParam != -1) {
-        auto& param = m_ShaderParams[m_CurrParam];
+    if (m_CurrParam != m_Parameters.end()) {
+        auto& pair  = *m_CurrParam;
+        auto& param = pair.second;
 
         if (glfwGetKey(m_Window, GLFW_KEY_PAGE_UP)   == GLFW_PRESS) {
             param.value += dt * param.speed;
@@ -459,8 +485,8 @@ int AcidbrotApp::loop (double dt) {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     GL_CHECK(glViewport(0, 0, fbWidth, fbHeight));
 
-    GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    //GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+    //GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
     // ................................
     // Generate the fractal data
@@ -646,6 +672,11 @@ int AcidbrotApp::loop (double dt) {
 
         setUniforms();
 
+        GL_CHECK(glEnable(GL_BLEND));
+        GL_CHECK(glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD));
+        GL_CHECK(glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE, GL_ZERO));
+        GL_CHECK(glBlendColor(0.0f, 0.0f, 0.0f, m_Parameters.at("motionBlur").value));
+
         // Render
         GL::drawFullscreenRect();
 
@@ -654,6 +685,8 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+
+        GL_CHECK(glDisable(GL_BLEND));
 
         GL_CHECK(glUseProgram(0));
     }
@@ -689,6 +722,7 @@ int AcidbrotApp::loop (double dt) {
         GL::ShaderProgram* shaderProgram = m_Shaders.at("font").get();
 
         GL_CHECK(glEnable(GL_BLEND));
+        GL_CHECK(glBlendEquation(GL_FUNC_ADD));
         GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
         GL_CHECK(glUseProgram(shaderProgram->get()));
@@ -701,10 +735,11 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 0, 0, 0.75f));
         m_Fonts.at("generic")->drawText(2, viewport[3] - 16-2, "Frame rate: %.1f FPS", getFrameRate());
 
-        // Shader parameter
-        if (m_CurrParam != -1) {
+        // Parameter
+        if (m_CurrParam != m_Parameters.end()) {
             auto& font  = m_Fonts.at("generic");
-            auto& param = m_ShaderParams[m_CurrParam];
+            auto& pair  = *m_CurrParam;
+            auto& param = pair.second;
     
             GL_CHECK(glUniform4f(shaderProgram->getUniformLocation("color"), 1, 1, 1, 0.75f));
             font->drawText(2, viewport[3] - 32-2, stringf(
@@ -716,6 +751,9 @@ int AcidbrotApp::loop (double dt) {
         m_Fonts.at("generic")->drawText(2, viewport[3] - 32-2, stringf("X:%.15f Y:%.15f Z:%.3f C:%.15f (%.15f, %.15f)",
             m_Viewport.position[0], m_Viewport.position[1], m_Viewport.position[2], m_Viewport.position[3], m_Viewport.position[4], m_Viewport.position[5]));
 */
+
+        GL_CHECK(glDisable(GL_BLEND));
+
         GL_CHECK(glUseProgram(0));
     }
 

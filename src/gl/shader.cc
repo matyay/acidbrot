@@ -387,7 +387,7 @@ void ShaderProgram::link (GLuint a_VertexShader, GLuint a_FragmentShader) {
     m_Program = glCreateProgram();
     if (!m_Program) {
         throw std::runtime_error(
-            stringf("glCreateProgram() failed! (%s)", getErrorString(glGetError()))
+            stringf("glCreateProgram() failed! (%s)", getErrorString(glGetError()).c_str())
         );
     }
     

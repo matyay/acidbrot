@@ -82,21 +82,23 @@ protected:
         Julia
     };
 
-    /// Shader parameter
-    struct ShaderParam {
+    /// Parameter
+    struct Parameter {
         std::string name;
+        bool        forShader;
         float       value;
 
         float       min, max;
         float       speed;
 
-        ShaderParam (const std::string& _name, float _value,
-                     float _min, float _max, float _speed=1.0) :
-            name  (_name),
-            value (_value),
-            min   (_min),
-            max   (_max),
-            speed (_speed)
+        Parameter (const std::string& _name, bool _forShader, float _value,
+                   float _min, float _max, float _speed=1.0) :
+            name      (_name),
+            forShader (_forShader),
+            value     (_value),
+            min       (_min),
+            max       (_max),
+            speed     (_speed)
         {};
     };
 
@@ -109,10 +111,10 @@ protected:
     /// Fractal type
     Fractal m_Fractal = Fractal::Mandelbrot;
 
-    /// Shader parameters
-    std::vector<ShaderParam> m_ShaderParams;
-    /// Currently modified shader param
-    ssize_t m_CurrParam = -1;
+    /// Parameters
+    std::map<std::string, Parameter> m_Parameters;
+    /// Current parameter
+    std::map<std::string, Parameter>::iterator m_CurrParam;
 
     // ..........................................
 
