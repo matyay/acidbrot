@@ -15,7 +15,7 @@ out vec4 o_Color;
 void main(void) {
 
     const int  MAX_ITER = 256;
-    const REAL B = 256.0;
+    const REAL B = 10.0;
 
     // Rotation matrix. FIXME: pass values of sin and cos as uniforms.
     MAT2 rot;

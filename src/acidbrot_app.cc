@@ -150,12 +150,12 @@ int AcidbrotApp::initialize () {
         m_Parameters.insert({a_Parameter.name, a_Parameter});
     };
 
-    addParameter(Parameter("colorGamma",  true,  2.0000, 1.0, 5.0, 1.000));
-    addParameter(Parameter("colorCycles", true,  5.0000, 1.0, 6.0, 1.000));
-    addParameter(Parameter("haloStepFac", true,  0.9875, 0.5, 1.0, 0.025));
-    addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5, 1.0, 0.100));
-    addParameter(Parameter("haloGain",    true,  1.0000, 0.5, 5.0, 1.000));
-    addParameter(Parameter("motionBlur",  false, 0.8500, 0.1, 1.0, 0.500));
+    addParameter(Parameter("colorGamma",  true,  2.0000, 1.0,  5.0, 1.000));
+    addParameter(Parameter("colorCycles", true,  4.0000, 1.0,  6.0, 1.000));
+    addParameter(Parameter("haloStepFac", true,  0.9875, 0.5,  1.0, 0.025));
+    addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5,  1.0, 0.100));
+    addParameter(Parameter("haloGain",    true,  1.0000, 0.5,  5.0, 1.000));
+    addParameter(Parameter("motionBlur",  false, 0.8500, 0.05, 1.0, 0.500));
 
     m_CurrParam = m_Parameters.end();
 
@@ -437,7 +437,7 @@ int AcidbrotApp::loop (double dt) {
         control.position = newPosition;
 
         // Rotation speed
-        control.rotation *= 0.5f;
+        control.rotation *= 0.75f;
 
         // Zooming speed
         control.zoom  *= 2.0f;
