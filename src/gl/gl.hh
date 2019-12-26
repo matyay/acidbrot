@@ -1,7 +1,7 @@
 #ifndef GL_HH
 #define GL_HH
 
-#include <GL/glew.h>
+#include "../glad/glad.h"
 
 #include <spdlog/spdlog.h>
 #include <memory>

@@ -67,11 +67,11 @@ Font::Font (const std::string a_Name, size_t a_Height) :
         GL_CHECK(glTexImage2D(
             GL_TEXTURE_2D,
             0,
-            GL_LUMINANCE,
+            GL_RED,
             g->bitmap.width,
             g->bitmap.rows,
             0,
-            GL_LUMINANCE,
+            GL_RED,
             GL_UNSIGNED_BYTE,
             g->bitmap.buffer
         ));

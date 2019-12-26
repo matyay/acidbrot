@@ -94,7 +94,6 @@ set(COMMON_LIBS
 # OpenGL libs
 set(GL_LIBS
     GL
-    GLEW
     GLU
     glfw3
     X11
@@ -103,7 +102,7 @@ set(GL_LIBS
 
 # =============================================================================
 
-file (GLOB_RECURSE SRCS src/*.cc)
+file (GLOB_RECURSE SRCS src/*.c src/*.cc)
 
 add_executable(acidbrot ${SRCS})
 

@@ -171,10 +171,10 @@ std::unique_ptr<uint8_t> Framebuffer::readPixels (size_t a_Index) {
 
     switch (m_Format)
     {
-    case GL_LUMINANCE:       sampleSize = 1; break;
-    case GL_LUMINANCE_ALPHA: sampleSize = 2; break;
-    case GL_RGB:             sampleSize = 3; break;
-    case GL_RGBA:            sampleSize = 4; break;
+    case GL_RED:    sampleSize = 1; break;
+    case GL_RG:     sampleSize = 2; break;
+    case GL_RGB:    sampleSize = 3; break;
+    case GL_RGBA:   sampleSize = 4; break;
 
     default:
         throw std::runtime_error("Invalid framebuffer pixel format");

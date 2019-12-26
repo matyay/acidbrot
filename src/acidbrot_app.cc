@@ -43,11 +43,10 @@ int AcidbrotApp::initialize () {
     m_Logger->info("Initializing app...");
 
     // Hints
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-//    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
-//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+    //glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    //glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
     glfwWindowHint(GLFW_DOUBLEBUFFER, true);
 
     glfwWindowHint(GLFW_RESIZABLE, false);
@@ -66,19 +65,19 @@ int AcidbrotApp::initialize () {
     glfwMakeContextCurrent(m_Window);    
     glfwSwapInterval(1);
 
-    // FIXME: This should be a generic wrapper
-    // Initialize GLEW
-    GLenum glewStatus = glewInit();
-    if (glewStatus != GLEW_OK) {
-        m_Logger->error("glewInit() Failed! {} ({})", glewGetErrorString(glewStatus), glewStatus);
+    // Initialize GLAD
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        m_Logger->error("gladLoadGL() Failed!");
         return -1;
     }
+
+    m_Logger->info("OpenGL v{}.{}", GLVersion.major, GLVersion.minor);
 
     // Print OpenGL renderer info
     GL::dumpRendererInfo();
     // Print OpenGL capabilities
     GL::dumpRendererCaps();
-
+    
     m_HaveFp64 = GL::isExtensionAvailable("GL_ARB_gpu_shader_fp64");
     m_Logger->info("m_HaveFp64 {}", m_HaveFp64);
 
