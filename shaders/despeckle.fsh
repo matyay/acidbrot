@@ -1,6 +1,8 @@
 #version 130
 precision highp float;
 
+#include "iter.fsh"
+
 varying vec2 v_TexCoord;
 
 uniform sampler2D fractal;
@@ -21,7 +23,7 @@ void main(void) {
         float w   = filterWeights[i];
 
         if (pel.a > 0.01) {
-            float n = pel.r * 255.0 + pel.g;
+            float n = decode_iter(pel.rgb);
             sum    += w * n;
             wsum   += w;
         }
@@ -29,9 +31,7 @@ void main(void) {
 
     if (wsum != 0.0) {
         sum    /= wsum;
-        float p = floor(sum);
-        float q = sum - p;
-        o_Color = vec4(p / 255.0, q, 0.0, 1.0);
+        o_Color = vec4(encode_iter(sum), 1.0);
     }
     else {
         o_Color = vec4(0.0, 0.0, 0.0, 0.0);

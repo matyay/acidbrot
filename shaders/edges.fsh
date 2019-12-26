@@ -1,6 +1,8 @@
 #version 130
 precision highp float;
 
+#include "iter.fsh"
+
 varying vec2 v_TexCoord;
 
 uniform sampler2D texture;
@@ -23,7 +25,7 @@ void main(void) {
             return;
         }
 
-        float n  = pel.r * 255.0 + pel.g;
+        float n = decode_iter(pel.rgb);
 
         nsum += n * filterWeights[i];
         asum += pel.a;

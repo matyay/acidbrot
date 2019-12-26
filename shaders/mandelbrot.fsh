@@ -1,6 +1,8 @@
 #define EXPONENT 2
 precision highp float;
 
+#include "iter.fsh"
+
 varying vec2 v_TexCoord;
 
 uniform VEC2  fractalPosition;
@@ -70,7 +72,5 @@ void main(void) {
     n  = clamp(n, 0.0, float(MAX_ITER));
 
     // Store iteration count
-    float p = floor(n);
-    float q = n - p;
-    o_Color = vec4(p / 255.0, q, 0.0, 1.0);
+    o_Color = vec4(encode_iter(n), 1.0);
 }
