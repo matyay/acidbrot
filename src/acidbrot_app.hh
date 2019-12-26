@@ -43,6 +43,9 @@ protected:
     /// Sets shader uniforms
     void setUniforms ();
 
+    /// Saves a screenshot
+    void takeScreenshot ();
+
     // ..........................................
 
     /// Main window
@@ -57,8 +60,11 @@ protected:
     /// OpenGL framebuffers
     GL::Map<GL::Framebuffer>    m_Framebuffers;
 
+    /// FIR filter masks
     GL::Map<FilterMask>         m_Masks;
 
+    /// Screenshot flag
+    bool m_DoScreenshot = false;
     /// Have fp64 shader extension
     bool m_HaveFp64 = false;
 
@@ -73,7 +79,7 @@ protected:
             std::array<double, 2>   julia;
         };
 
-        double param[];
+        double param[7];
     };
 
     /// Fractal type

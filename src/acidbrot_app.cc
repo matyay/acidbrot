@@ -2,6 +2,8 @@
 
 #include "acidbrot_app.hh"
 
+#include <utils/savepng.hh>
+
 #include <gl/utils.hh>
 #include <gl/primitives.hh>
 
@@ -164,6 +166,19 @@ int AcidbrotApp::initialize () {
     FilterMask* mask = nullptr;
 
     mask = new FilterMask(3, 3);
+    mask->w(0, 0) = 0.25f;
+    mask->w(0, 1) = 1.00f;
+    mask->w(0, 2) = 0.25f;
+    mask->w(1, 0) = 1.00f;
+    mask->w(1, 1) = 1.00f;
+    mask->w(1, 2) = 1.00f;
+    mask->w(2, 0) = 0.25f;
+    mask->w(2, 1) = 1.00f;
+    mask->w(2, 2) = 0.25f;
+    mask->normalizeWeights();
+    m_Masks["despeckle"].reset(mask);
+
+    mask = new FilterMask(3, 3);
     mask->w(0, 0) = -0.5f;
     mask->w(0, 1) = -1.0f;
     mask->w(0, 2) = -0.5f;
@@ -271,6 +286,55 @@ void AcidbrotApp::setUniforms () {
 }
 
 // ============================================================================
+#define MAX_FILE_INDEX 9999
+
+size_t getNextFileIndex(const std::string& a_Format, size_t a_Begin) {
+
+    auto fileExists = [](const std::string& fileName) {
+        struct stat buffer;   
+        return (stat(fileName.c_str(), &buffer) == 0);
+    };
+
+    // Limit
+    if (a_Begin > MAX_FILE_INDEX) {
+        a_Begin = MAX_FILE_INDEX;
+    }
+
+    // Find a first free file name
+    for (size_t i=a_Begin; i<MAX_FILE_INDEX; ++i) {
+        std::string fileName = stringf(a_Format, i);
+
+        // File does not exist
+        if (!fileExists(fileName)) {
+            return i;
+        }
+    }
+
+    // Maximum number of files reached
+    return MAX_FILE_INDEX;
+}
+
+void AcidbrotApp::takeScreenshot () {
+    const std::string nameFormat = "screenshot_%04d.png";
+
+    // Download the framebuffer
+    GL::Framebuffer* fb = m_Framebuffers.at("master").get();
+    auto data = fb->readPixels(0);
+
+    // Determine file name
+    size_t index = getNextFileIndex(nameFormat, 0);
+    std::string fileName = stringf(nameFormat, index);
+
+    // Save it to PNG
+    m_Logger->info("Saving screenshot '{}'", fileName);
+    savePNG(fileName,
+            fb->getWidth(),
+            fb->getHeight(),
+            data.get(),
+            true);
+}
+
+// ============================================================================
 
 void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
                            int a_Key, 
@@ -278,12 +342,19 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
                            int a_Action, 
                            int a_Mods) 
 {
+    (void)a_Scancode;
+
     // Fullscreen / windowed
     if ( a_Key == GLFW_KEY_ENTER && 
         (a_Mods & GLFW_MOD_ALT) && 
          a_Action == GLFW_PRESS)
     {
         setFullscreen(a_Window, !isFullscreen(a_Window));
+    }
+
+    // Screenshot
+    if (a_Key == GLFW_KEY_F12 && a_Action == GLFW_PRESS) {
+        m_DoScreenshot = true;
     }
 
     // Switch fractal
@@ -470,8 +541,8 @@ int AcidbrotApp::loop (double dt) {
             m_Viewport.position.zoom = maxZoom;
         }
 
-        if (m_Viewport.position.zoom < -1.0f) {
-            m_Viewport.position.zoom = -1.0f;
+        if (m_Viewport.position.zoom < -2.0f) {
+            m_Viewport.position.zoom = -2.0f;
         }
 
         // No negative abs(C)
@@ -555,21 +626,6 @@ int AcidbrotApp::loop (double dt) {
         GL::Framebuffer*   fbSrc  = m_Framebuffers.at("fractalRaw").get();
         GL::Framebuffer*   fbDst  = m_Framebuffers.at("fractalFlt").get();
 
-        float weights [9] = {
-            0.25f, 1.00f, 0.25f,
-            1.00f, 1.00f, 1.00f,
-            0.25f, 1.00f, 0.25f
-        };
-
-        float offsets [9*2];
-        for (int j=0; j<=2; ++j) {
-            for (int i=0; i<=2; ++i) {
-                int ii = 2 * (j*3 + i);
-                offsets[ii+0] = (float)(i - 1) / (float)fbDst->getWidth();
-                offsets[ii+1] = (float)(j - 1) / (float)fbDst->getHeight();
-            }
-        }
-
         // Setup
         fbDst->enable();
         GL_CHECK(glUseProgram(shader->get()));
@@ -577,8 +633,12 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
 
-        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"), 9, weights));
-        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"), 9, offsets));
+        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"), 9, 
+                    m_Masks.at("despeckle")->getWeights()
+                    ));
+        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"), 9,
+                    m_Masks.at("despeckle")->getOffsets()
+                    ));
 
         // Render
         GL::drawFullscreenRect();
@@ -739,6 +799,12 @@ int AcidbrotApp::loop (double dt) {
         glBlitFramebuffer(0, 0, fbWidth, fbHeight,
                           0, 0, fbWidth, fbHeight,
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+
+    // Screenshot
+    if (m_DoScreenshot) {
+        takeScreenshot();
+        m_DoScreenshot = false;
     }
 
     // ................................

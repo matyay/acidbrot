@@ -83,6 +83,7 @@ add_subdirectory(3rd_party)
 set(THIRD_PARTY_LIBS
     spdlog
     stb
+    png
 )
 
 # Common libs
