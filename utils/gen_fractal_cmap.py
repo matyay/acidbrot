@@ -15,7 +15,7 @@ def gen_stripe(cmap_name, width, height):
     cmap = cm.get_cmap(cmap_name, lut=width)
 
     image = np.uint8(cmap(arr) * 255.0)
-    return image
+    return image[:, :, :3]
 
 
 def main():
@@ -36,13 +36,16 @@ def main():
 
     colormaps = (
         "gnuplot",
+        "spring",
         "inferno",
+        "cool",
         "cividis",
         "viridis",
-        "gist_stern",
+        "gist_rainbow",
         "gnuplot2",
         "rainbow",
         "hot",
+        "Wistia",
     )
 
     # Generate
@@ -57,6 +60,17 @@ def main():
             image = stripe
         else:
             image = np.vstack((image, stripe))
+
+    # Saturate
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            pel = image[y, x, :].astype(np.float32) / 255.0
+
+            d   = pel - np.array([0.5, 0.5, 0.5])
+            d  *= 1.5;
+            pel = np.clip(np.array([0.5, 0.5, 0.5]) + d, 0.0, 1.0)
+
+            image[y, x, :] = (pel * 255.0).astype(np.uint8)
 
     # Blur
     h  = np.ones((8, 1))
