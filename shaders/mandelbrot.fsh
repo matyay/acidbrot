@@ -68,7 +68,7 @@ void main(void) {
     }
 
     // Smoothing
-    n -= log(log(length(z)) / log(B)) / log(EXPONENT);
+    n -= log(log(length(z)) / log(B)) / log(float(EXPONENT));
     n  = clamp(n, 0.0, float(MAX_ITER));
 
     // Store iteration count
