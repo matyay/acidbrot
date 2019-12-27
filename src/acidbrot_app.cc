@@ -54,7 +54,9 @@ int AcidbrotApp::initialize () {
     glfwWindowHint(GLFW_RESIZABLE, false);
 
     // Create the window
-    m_Window = glfwCreateWindow(1280, 720, "Acid-brot", nullptr, nullptr);
+    m_Window = glfwCreateWindow(Resolutions[0][0], Resolutions[0][1], 
+                                "Acid-brot", nullptr, nullptr);
+
     if (m_Window == nullptr) {
         m_Logger->error("Error creating window!");
         return -1;
@@ -350,6 +352,33 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
                            int a_Mods) 
 {
     (void)a_Scancode;
+
+    // Manually select resolution
+    if (!isFullscreen(a_Window) && a_Action == GLFW_PRESS) {
+        const std::vector<int> keys = {
+            GLFW_KEY_F1,
+            GLFW_KEY_F2,
+            GLFW_KEY_F3,
+            GLFW_KEY_F4,
+            GLFW_KEY_F5,
+            GLFW_KEY_F6,
+            GLFW_KEY_F7,
+            GLFW_KEY_F8,
+        };
+
+        for (size_t i=0; i<keys.size(); ++i) {
+            if (i >= Resolutions.size()) {
+                break;
+            }
+
+            if (a_Key == keys[i]) {
+                glfwSetWindowSize(a_Window, Resolutions[i][0], Resolutions[i][1]);
+                center(a_Window, getBestMonitor(a_Window));
+                initializeFramebuffers();
+                break;
+            }
+        }
+    }
 
     // Fullscreen / windowed
     if ( a_Key == GLFW_KEY_ENTER && 

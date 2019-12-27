@@ -10,6 +10,7 @@
 #include "glfw_app.hh"
 #include "filter_mask.hh"
 
+#include <vector>
 #include <array>
 
 // ============================================================================
@@ -22,6 +23,15 @@ public:
     AcidbrotApp ();
 
 protected:
+
+    /// Video resolutions
+    const std::vector<std::array<size_t, 2>> Resolutions = {
+        {640,   480},
+        {800,   600},
+        {1280,  720},
+        {1366,  768},
+        {1920, 1080}
+    };
 
     /// The initialize method
     int initialize ();

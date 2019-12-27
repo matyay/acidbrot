@@ -64,6 +64,11 @@ protected:
 
 private:
 
+    /// Window framebuffer size callback
+    void framebufferSizeCallback (GLFWwindow* a_Window, int a_Width, int a_Height);
+    /// Window framebuffer size callback (static)
+    static void _framebufferSizeCallback (GLFWwindow* a_Window, int i_Width, int a_Height);
+
     /// Returns true when all windows are closed
     bool allWindowsClosed ();
 

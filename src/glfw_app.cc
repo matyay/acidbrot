@@ -28,6 +28,9 @@ void GLFWApp::addWindow (GLFWwindow* a_Window) {
     // Set user pointer
     glfwSetWindowUserPointer(a_Window, (void*)this);
 
+    // Set framebuffer size callback
+    glfwSetFramebufferSizeCallback(a_Window, GLFWApp::_framebufferSizeCallback);
+
     // Add to the list
     m_Windows[a_Window] = context;
 
@@ -49,6 +52,34 @@ bool GLFWApp::allWindowsClosed () {
 
     return true;
 }
+
+void GLFWApp::framebufferSizeCallback (GLFWwindow* a_Window, int a_Width, int a_Height) {
+
+    WindowContext& context = m_Windows.at(a_Window);
+
+    // Check if the size actually changed
+    if (context.fbSize[0] != a_Width || context.fbSize[1] != a_Height) {
+        context.sizeChanged = true;
+    }
+
+    // Store the framebuffer size
+    context.fbSize[0] = a_Width;
+    context.fbSize[1] = a_Height;
+}
+
+void GLFWApp::_framebufferSizeCallback (GLFWwindow* a_Window, int a_Width, int a_Height) {
+
+    // Retreive window's user pointer.
+    GLFWApp* app = (GLFWApp*)glfwGetWindowUserPointer(a_Window);
+    if (app == nullptr) {
+        return;
+    }
+
+    // Invoke the member method
+    app->framebufferSizeCallback(a_Window, a_Width, a_Height);
+}
+
+// ============================================================================
 
 bool GLFWApp::isFullscreen (GLFWwindow* a_Window) {
     return (glfwGetWindowMonitor(a_Window) != nullptr);
@@ -98,8 +129,6 @@ void GLFWApp::setFullscreen (GLFWwindow* a_Window, bool a_Fullscreen) {
             context.size[0],     context.size[1]
             );
     }
-
-    context.sizeChanged = true;
 }
 
 bool GLFWApp::sizeChanged (GLFWwindow* a_Window) {
