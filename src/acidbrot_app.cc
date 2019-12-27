@@ -91,13 +91,16 @@ int AcidbrotApp::initialize () {
 
     // ..........................................
 
-    GL::Shader vshGeneric      ("shaders/generic2d.vsh",       GL_VERTEX_SHADER);
-    GL::Shader fshMandelbrot   ("shaders/mandelbrot32.fsh",    GL_FRAGMENT_SHADER, {{"MANDELBROT", "1"}});
-    GL::Shader fshJulia        ("shaders/mandelbrot32.fsh",    GL_FRAGMENT_SHADER, {{"JULIA", "1"}});
-    GL::Shader fshColorizer    ("shaders/colorizer.fsh",       GL_FRAGMENT_SHADER);
-    GL::Shader fshDespeckle    ("shaders/despeckle.fsh",       GL_FRAGMENT_SHADER);
-    GL::Shader fshFir3x3Abs    ("shaders/edges.fsh",           GL_FRAGMENT_SHADER, {{"TAPS", "9"}});
-    GL::Shader fshHalo         ("shaders/halo.fsh",            GL_FRAGMENT_SHADER);
+    std::string mandelbrotShader = (m_HaveFp64) ? "shaders/mandelbrot64.fsh" :
+                                                  "shaders/mandelbrot32.fsh";
+
+    GL::Shader vshGeneric      ("shaders/generic2d.vsh", GL_VERTEX_SHADER);
+    GL::Shader fshMandelbrot   (mandelbrotShader,        GL_FRAGMENT_SHADER, {{"MANDELBROT", "1"}});
+    GL::Shader fshJulia        (mandelbrotShader,        GL_FRAGMENT_SHADER, {{"JULIA", "1"}});
+    GL::Shader fshColorizer    ("shaders/colorizer.fsh", GL_FRAGMENT_SHADER);
+    GL::Shader fshDespeckle    ("shaders/despeckle.fsh", GL_FRAGMENT_SHADER);
+    GL::Shader fshFir3x3Abs    ("shaders/edges.fsh",     GL_FRAGMENT_SHADER, {{"TAPS", "9"}});
+    GL::Shader fshHalo         ("shaders/halo.fsh",      GL_FRAGMENT_SHADER);
 
     m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
 
@@ -585,17 +588,32 @@ int AcidbrotApp::loop (double dt) {
             (float)m_Viewport.position.julia[0] * sinf(m_Viewport.position.julia[1])
         };
 
-        GL_CHECK(glUniform2f(shader->getUniformLocation("fractalPosition"),
-                    m_Viewport.position.position[0],
-                    m_Viewport.position.position[1]
-                    ));
+        if (m_HaveFp64) {
+
+            GL_CHECK(glUniform2d(shader->getUniformLocation("fractalPosition"),
+                        m_Viewport.position.position[0],
+                        m_Viewport.position.position[1]
+                        ));
+
+            GL_CHECK(glUniform1d(shader->getUniformLocation("fractalScale"),
+                        pow(2.0, m_Viewport.position.zoom)
+                        ));
+        }
+        else {
+
+            GL_CHECK(glUniform2f(shader->getUniformLocation("fractalPosition"),
+                        m_Viewport.position.position[0],
+                        m_Viewport.position.position[1]
+                        ));
+
+            GL_CHECK(glUniform1f(shader->getUniformLocation("fractalScale"),
+                        pow(2.0, m_Viewport.position.zoom)
+                        ));
+        }
+
 
         GL_CHECK(glUniform1f(shader->getUniformLocation("fractalRotation"),
                     m_Viewport.position.rotation
-                    ));
-
-        GL_CHECK(glUniform1f(shader->getUniformLocation("fractalScale"),
-                    pow(2.0, m_Viewport.position.zoom)
                     ));
 
         GL_CHECK(glUniform2f(shader->getUniformLocation("fractalCoeff"),

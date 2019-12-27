@@ -96,7 +96,7 @@ set(COMMON_LIBS
 set(GL_LIBS
     GL
     GLU
-    glfw3
+    glfw
     X11
     dl
 )

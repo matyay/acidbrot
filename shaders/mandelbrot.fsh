@@ -15,7 +15,8 @@ out vec4 o_Color;
 void main(void) {
 
     const int  MAX_ITER = 256;
-    const REAL B = 10.0;
+    const REAL B  = 10.0;
+    const REAL B2 = B*B;
 
     // Rotation matrix. FIXME: pass values of sin and cos as uniforms.
     MAT2 rot;
@@ -46,7 +47,7 @@ void main(void) {
         REAL xx = z.x * z.x;
         REAL yy = z.y * z.y;
 
-        if ((xx + yy) > B*B) {
+        if ((xx + yy) > B2) {
             break;
         }
 
@@ -68,7 +69,7 @@ void main(void) {
     }
 
     // Smoothing
-    n -= log(log(length(z)) / log(B)) / log(float(EXPONENT));
+    n -= log(log(length(vec2(z))) / log(float(B))) / log(float(EXPONENT));
     n  = clamp(n, 0.0, float(MAX_ITER));
 
     // Store iteration count
