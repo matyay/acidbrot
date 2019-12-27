@@ -9,12 +9,12 @@ uniform VEC2  fractalPosition;
 uniform float fractalRotation;
 uniform REAL  fractalScale;
 uniform vec2  fractalCoeff;
+uniform int   fractalIter;
 
 out vec4 o_Color;
 
 void main(void) {
 
-    const int  MAX_ITER = 256;
     const REAL B  = 10.0;
     const REAL B2 = B*B;
 
@@ -43,7 +43,7 @@ void main(void) {
 #endif
 
     // Evaluate
-    for (int i=0; i<MAX_ITER; ++i) {
+    for (int i=0; i<fractalIter; ++i) {
         REAL xx = z.x * z.x;
         REAL yy = z.y * z.y;
 
@@ -63,14 +63,14 @@ void main(void) {
     }
 
     // Iteration limit reached.
-    if (n >= float(MAX_ITER)) {
+    if (n >= float(fractalIter)) {
         o_Color = vec4(0.0, 0.0, 0.0, 0.0);
         return;
     }
 
     // Smoothing
     n -= log(log(length(vec2(z))) / log(float(B))) / log(float(EXPONENT));
-    n  = clamp(n, 0.0, float(MAX_ITER));
+    n  = clamp(n, 0.0, float(fractalIter));
 
     // Store iteration count
     o_Color = vec4(encode_iter(n), 1.0);

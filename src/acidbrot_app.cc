@@ -54,7 +54,7 @@ int AcidbrotApp::initialize () {
     glfwWindowHint(GLFW_RESIZABLE, false);
 
     // Create the window
-    m_Window = glfwCreateWindow(1280, 700, "Acid-brot", nullptr, nullptr);
+    m_Window = glfwCreateWindow(1280, 720, "Acid-brot", nullptr, nullptr);
     if (m_Window == nullptr) {
         m_Logger->error("Error creating window!");
         return -1;
@@ -157,6 +157,7 @@ int AcidbrotApp::initialize () {
         m_Parameters.insert({a_Parameter.name, a_Parameter});
     };
 
+    addParameter(Parameter("fractalIter", true,  256.0,  10.0, 512.0, 100.000));
     addParameter(Parameter("colorGamma",  true,  2.0000, 1.0,  5.0, 1.000));
     addParameter(Parameter("colorCycles", true,  4.0000, 1.0,  6.0, 1.000));
     addParameter(Parameter("haloStepFac", true,  0.9875, 0.5,  1.0, 0.025));
@@ -587,6 +588,10 @@ int AcidbrotApp::loop (double dt) {
             (float)m_Viewport.position.julia[0] * cosf(m_Viewport.position.julia[1]),
             (float)m_Viewport.position.julia[0] * sinf(m_Viewport.position.julia[1])
         };
+
+        GL_CHECK(glUniform1i(shader->getUniformLocation("fractalIter"),
+                    int(m_Parameters.at("fractalIter").value)
+                    ));
 
         if (m_HaveFp64) {
 

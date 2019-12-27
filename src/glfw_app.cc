@@ -87,7 +87,7 @@ void GLFWApp::setFullscreen (GLFWwindow* a_Window, bool a_Fullscreen) {
 
         glfwSetWindowMonitor(a_Window, nullptr,
             context.position[0], context.position[1],
-            context.size[0], context.size[1],
+            context.size[0],     context.size[1],
             0);
 
         m_Logger->info("window[{}]: windowed, pos=({}, {}), size=({}, {})",
@@ -220,7 +220,7 @@ int GLFWApp::run () {
         // Invoke the loop method
         int res = loop(dt);
         if (res) {
-            exitCode = res;
+            exitCode = (res < 0) ? res : 0;
             break;
         }
     }
