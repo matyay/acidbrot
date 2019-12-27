@@ -94,11 +94,7 @@ set(COMMON_LIBS
 
 # OpenGL libs
 set(GL_LIBS
-    GL
-    GLU
-    glfw
-    X11
-    dl
+    glfw3 X11 dl pthread
 )
 
 # =============================================================================

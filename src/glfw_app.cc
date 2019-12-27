@@ -90,6 +90,8 @@ void GLFWApp::setFullscreen (GLFWwindow* a_Window, bool a_Fullscreen) {
             context.size[0],     context.size[1],
             0);
 
+        glfwSetWindowSize(a_Window, context.size[0], context.size[1]);
+
         m_Logger->info("window[{}]: windowed, pos=({}, {}), size=({}, {})",
             (void*)a_Window,
             context.position[0], context.position[1],

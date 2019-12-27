@@ -232,6 +232,7 @@ int AcidbrotApp::initializeFramebuffers () {
     // Get the main framebuffer size
     int fbWidth, fbHeight;
     glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
+    //glfwGetWindowSize(m_Window, &fbWidth, &fbHeight);
 
     m_Logger->info("Framebuffer size ({}, {})", fbWidth, fbHeight);
 
@@ -563,6 +564,7 @@ int AcidbrotApp::loop (double dt) {
     // Get the main framebuffer size
     int fbWidth, fbHeight;
     glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
+    //glfwGetWindowSize(m_Window, &fbWidth, &fbHeight);
 
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     GL_CHECK(glViewport(0, 0, fbWidth, fbHeight));
