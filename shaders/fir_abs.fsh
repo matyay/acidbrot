@@ -1,7 +1,7 @@
 #version 130
 precision highp float;
 
-varying vec2 v_TexCoord;
+in vec2 v_TexCoord;
 
 uniform sampler2D texture;
 

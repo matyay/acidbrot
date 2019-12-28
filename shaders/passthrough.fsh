@@ -1,5 +1,5 @@
 #version 130
-varying vec2 v_TexCoord;
+in vec2 v_TexCoord;
 
 uniform sampler2D texture;
 

@@ -3,7 +3,7 @@ precision highp float;
 
 #include "iter.fsh"
 
-varying vec2 v_TexCoord;
+in vec2 v_TexCoord;
 
 uniform VEC2  fractalPosition;
 uniform float fractalRotation;

@@ -1,6 +1,6 @@
 #version 450
 
-attribute vec4 coord;
+in vec4 coord;
 
 varying vec2 texcoord;
 
