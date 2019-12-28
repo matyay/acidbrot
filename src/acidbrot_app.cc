@@ -45,10 +45,10 @@ int AcidbrotApp::initialize () {
     m_Logger->info("Initializing app...");
 
     // Hints
-    //glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    //glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
     glfwWindowHint(GLFW_DOUBLEBUFFER, true);
 
     glfwWindowHint(GLFW_RESIZABLE, false);
@@ -86,6 +86,10 @@ int AcidbrotApp::initialize () {
     
     m_HaveFp64 = GL::isExtensionAvailable("GL_ARB_gpu_shader_fp64");
     m_Logger->info("m_HaveFp64 {}", m_HaveFp64);
+
+    // ..........................................
+
+    m_ScreenQuad.reset(new GL::ScreenQuad());
 
     // ..........................................
 
@@ -234,7 +238,6 @@ int AcidbrotApp::initializeFramebuffers () {
     // Get the main framebuffer size
     int fbWidth, fbHeight;
     glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
-    //glfwGetWindowSize(m_Window, &fbWidth, &fbHeight);
 
     m_Logger->info("Framebuffer size ({}, {})", fbWidth, fbHeight);
 
@@ -598,8 +601,8 @@ int AcidbrotApp::loop (double dt) {
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     GL_CHECK(glViewport(0, 0, fbWidth, fbHeight));
 
-    //GL_CHECK(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
-    //GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    GL_CHECK(glClearColor(0.0f, 0.0f, 0.5f, 1.0f));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
     // ................................
     // Generate the fractal data
@@ -669,7 +672,7 @@ int AcidbrotApp::loop (double dt) {
         float v0 = -1.0f / aspect;
         float v1 = +1.0f / aspect;
 
-        GL_CHECK(GL::drawRectangle(-1.0f, -1.0f, +1.0f, +1.0f, u0, v0, u1, v1));
+        m_ScreenQuad->draw(-1.0f, -1.0f, +1.0f, +1.0f, u0, v0, u1, v1);
 
         GL_CHECK(glUseProgram(0));
         framebuffer->disable();
@@ -697,7 +700,7 @@ int AcidbrotApp::loop (double dt) {
                     ));
 
         // Render
-        GL::drawFullscreenRect();
+        m_ScreenQuad->drawFullscreen();
 
         // Cleanup
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
@@ -729,7 +732,7 @@ int AcidbrotApp::loop (double dt) {
                     ));
 
         // Render
-        GL::drawFullscreenRect();
+        m_ScreenQuad->drawFullscreen();
 
         // Cleanup
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
@@ -762,7 +765,7 @@ int AcidbrotApp::loop (double dt) {
         setUniforms();
 
         // Render
-        GL::drawFullscreenRect();
+        m_ScreenQuad->drawFullscreen();
 
         // Cleanup
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
@@ -803,7 +806,7 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glBlendColor(0.0f, 0.0f, 0.0f, m_Parameters.at("motionBlur").value));
 
         // Render
-        GL::drawFullscreenRect();
+        m_ScreenQuad->drawFullscreen();
 
         // Cleanup
         fbMaster->disable();
@@ -817,6 +820,7 @@ int AcidbrotApp::loop (double dt) {
 
         GL_CHECK(glUseProgram(0));
     }
+
 
     // ................................
     // Geometry
@@ -843,8 +847,10 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUseProgram(0));
     }*/
 
+
     // ................................
     // Copy the master framebuffer
+
     {
         GL::Framebuffer* fbMaster = m_Framebuffers.at("master").get();
 

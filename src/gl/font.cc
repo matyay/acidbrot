@@ -150,6 +150,7 @@ void Font::_drawText(float x, float y, const char* a_String) {
     // Setup rendering
     GL_CHECK(glActiveTexture(GL_TEXTURE0));    
     GL_CHECK(glBindVertexArray(m_Vao));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, m_Vbo));
 
     // Render glyphs
     for (char const *p = a_String; *p; ++p) {

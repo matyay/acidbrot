@@ -6,6 +6,7 @@
 #include <gl/shader.hh>
 #include <gl/texture.hh>
 #include <gl/framebuffer.hh>
+#include <gl/primitives.hh>
 
 #include "glfw_app.hh"
 #include "filter_mask.hh"
@@ -60,6 +61,9 @@ protected:
 
     /// Main window
     GLFWwindow* m_Window = nullptr;
+
+    /// Screen quad
+    std::unique_ptr<GL::ScreenQuad>  m_ScreenQuad;
 
     /// Fonts
     GL::Map<GL::Font>           m_Fonts;
