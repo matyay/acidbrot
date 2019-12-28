@@ -81,6 +81,8 @@ protected:
     bool m_DoScreenshot = false;
     /// Have fp64 shader extension
     bool m_HaveFp64 = false;
+    /// VSync enabled
+    bool m_EnableVSync = true;
 
     /// Viewport data
     union Viewport {

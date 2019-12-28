@@ -40,6 +40,7 @@ Keyboard:
 |F12|Save a screenshot|
 |Alt+Enter|Switch between fullscreen and windowed mode|
 |F1-F8|Change window size (and resolution)|
+|F11|Switch VSync on/off|
 |Home/End|Select a parameter to modify (name and value shown in the upper-left corner|
 |PgUp/PgDn|Adjust the selected parameter value|
 |Esc|Exit the application|

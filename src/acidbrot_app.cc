@@ -69,7 +69,7 @@ int AcidbrotApp::initialize () {
 
     // Set OpenGL context
     glfwMakeContextCurrent(m_Window);    
-    glfwSwapInterval(1);
+    glfwSwapInterval(m_EnableVSync);
 
     // Initialize GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -389,6 +389,12 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
          a_Action == GLFW_PRESS)
     {
         setFullscreen(a_Window, !isFullscreen(a_Window));
+    }
+
+    // Enable / disable VSync
+    if (a_Key == GLFW_KEY_F11 && a_Action == GLFW_PRESS) {
+        m_EnableVSync = !m_EnableVSync;
+        glfwSwapInterval(m_EnableVSync);
     }
 
     // Screenshot
