@@ -96,7 +96,20 @@ Font::Font (const std::string a_Name, size_t a_Height) :
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     
     // Free font face
-    FT_Done_Face(face);   
+    FT_Done_Face(face);
+
+    // Initialize VAO and VBO
+    GL_CHECK(glGenBuffers(1, &m_Vbo));
+    GL_CHECK(glGenVertexArrays(1, &m_Vao));
+
+    GL_CHECK(glBindVertexArray(m_Vao));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, m_Vbo));
+
+    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 4*6*sizeof(float), nullptr, GL_STREAM_DRAW));
+    GL_CHECK(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0));
+    GL_CHECK(glEnableVertexAttribArray(0));
+
+    GL_CHECK(glBindVertexArray(0));    
 }
 
 Font::~Font () {
@@ -105,6 +118,10 @@ Font::~Font () {
     for (auto it=m_Glyphs.begin(); it!=m_Glyphs.end(); ++it) {
         glDeleteTextures(1, &(it->second.texture));
     }
+
+    // Free VBO and VAO
+    glDeleteBuffers(1, &m_Vbo);
+    glDeleteVertexArrays(1, &m_Vao);
 }
 
 // ============================================================================
@@ -130,9 +147,9 @@ void Font::_drawText(float x, float y, const char* a_String) {
     const float x0    = x;
     const float scale = 1.0f;
 
-    // Setup OpenGL state
-    GL_CHECK(glEnableVertexAttribArray(0));
+    // Setup rendering
     GL_CHECK(glActiveTexture(GL_TEXTURE0));    
+    GL_CHECK(glBindVertexArray(m_Vao));
 
     // Render glyphs
     for (char const *p = a_String; *p; ++p) {
@@ -179,9 +196,9 @@ void Font::_drawText(float x, float y, const char* a_String) {
             { xpos + w, ypos,       1.0, 1.0 },
             { xpos + w, ypos + h,   1.0, 0.0 }           
         };
-                
-        GL_CHECK(glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, vertices));
-            
+
+        GL_CHECK(glBufferData(GL_ARRAY_BUFFER, 4*6*sizeof(float), vertices, GL_STREAM_DRAW));
+
         // Bind glyph texture
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, glyph.texture));
         
@@ -190,7 +207,7 @@ void Font::_drawText(float x, float y, const char* a_String) {
     }
     
     // Cleanup
-    GL_CHECK(glDisableVertexAttribArray(0));
+    GL_CHECK(glBindVertexArray(0));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
 

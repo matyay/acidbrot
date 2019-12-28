@@ -44,6 +44,10 @@ protected:
     /// Glyphs
     std::map<char, Glyph> m_Glyphs;
 
+    /// VAO && VBO
+    GLuint m_Vao = 0;
+    GLuint m_Vbo = 0;
+
     /// Draws text at given coordinates
     void  _drawText (float x, float y, const char* a_String);
 };
