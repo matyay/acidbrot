@@ -15,8 +15,9 @@ namespace GL {
 /// Checks if a call to a GL function succeeded. If not throws an exception
 #define GL_CHECK(call)  \
 {   \
+    GL::checkPreCall(__FILE__ ":" GL_STRINGIFY1(__LINE__) " " GL_STRINGIFY1(call));  \
     call;    \
-    GL::check(__FILE__ ":" GL_STRINGIFY1(__LINE__) " " GL_STRINGIFY1(call));  \
+    GL::checkPostCall(__FILE__ ":" GL_STRINGIFY1(__LINE__) " " GL_STRINGIFY1(call));  \
 }   \
 
 // ============================================================================
@@ -24,8 +25,10 @@ namespace GL {
 /// Retrieves OpenGL error string
 std::string getErrorString (const GLenum err);
 
+/// Checks for OpenGL error before a call. Allows to detect unhandled error.
+void checkPreCall  (const char* a_Call);
 /// Checks for OpenGL error using glGetError. Throws an exception if found one.
-void check (const char* a_Call);
+void checkPostCall (const char* a_Call);
 
 // ============================================================================
 

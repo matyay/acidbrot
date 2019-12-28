@@ -61,9 +61,9 @@ Framebuffer::Framebuffer (size_t a_Width, size_t a_Height, GLenum a_Format, size
     // Setup color attachments
     for (size_t i=0; i<m_Textures.size(); ++i) {
 #ifdef GL_MAX_COLOR_ATTACHMENTS_NV
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_NV + i, GL_TEXTURE_2D, m_Textures[i], 0);
+        GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_NV + i, GL_TEXTURE_2D, m_Textures[i], 0));
 #else
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_Textures[i], 0); // There will always be 1 texture.
+        GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_Textures[i], 0)); // There will always be 1 texture.
 #endif        
     }
     
@@ -185,7 +185,9 @@ std::unique_ptr<uint8_t> Framebuffer::readPixels (size_t a_Index) {
     auto   data = std::unique_ptr<uint8_t>(new uint8_t[size]);
 
     // Read pixels
-    glReadPixels(0, 0, m_Width, m_Height, m_Format, GL_UNSIGNED_BYTE, data.get());
+    GL_CHECK(glPixelStorei(GL_PACK_ALIGNMENT, 1));
+    GL_CHECK(glReadPixels(0, 0, m_Width, m_Height, m_Format,
+                          GL_UNSIGNED_BYTE, data.get()));
     
     return data;
 }

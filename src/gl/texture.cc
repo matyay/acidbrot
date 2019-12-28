@@ -18,9 +18,9 @@ Texture::Texture (GLint a_Filter, GLint a_Border) {
     create();
 
     // Set filtering    
-    glBindTexture(GL_TEXTURE_2D, m_Texture);
-    setupFiltering(GL_TEXTURE_2D, a_Filter, a_Border);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_Texture));
+    GL_CHECK(setupFiltering(GL_TEXTURE_2D, a_Filter, a_Border));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 Texture::Texture (size_t a_Width, size_t a_Height, GLenum a_Format, GLint a_Filter, GLint a_Border) :
@@ -32,12 +32,12 @@ Texture::Texture (size_t a_Width, size_t a_Height, GLenum a_Format, GLint a_Filt
     create();
 
     // Allocate
-    glBindTexture(GL_TEXTURE_2D, m_Texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, a_Format, a_Width, a_Height, 0, a_Format, GL_UNSIGNED_BYTE, nullptr);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_Texture));
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, a_Format, a_Width, a_Height, 0, a_Format, GL_UNSIGNED_BYTE, nullptr));
 
     // Set filtering
     setupFiltering(GL_TEXTURE_2D, a_Filter, a_Border);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 Texture::Texture(const std::string a_FileName, GLint a_Filter, GLint a_Border) {
@@ -65,21 +65,14 @@ Texture::Texture(const std::string a_FileName, GLint a_Filter, GLint a_Border) {
     m_Format = GL_RGBA;
         
     // Upload to OpenGL
-    glBindTexture(GL_TEXTURE_2D, m_Texture);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_Texture));
     
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dx, dy, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
-    
-    GLenum glRes = glGetError();
-    if (glRes != GL_NO_ERROR) {
-        throw std::runtime_error(
-            stringf("glTexImage2D() failed! (%s)", getErrorString(glRes).c_str())
-        );
-    }
+    GL_CHECK(glPixelStorei(GL_UNPACK_ALIGNMENT, 1));
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dx, dy, 0, GL_RGBA, GL_UNSIGNED_BYTE, image));
     
     // Set filtering
     setupFiltering(GL_TEXTURE_2D, a_Filter, a_Border);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     
     // Free image data
     stbi_image_free(image);
@@ -113,18 +106,18 @@ void Texture::clear () {
     auto   zeros = std::unique_ptr<uint8_t>(new uint8_t[size]);
     
     memset(zeros.get(), 0, size);
-    glTexImage2D(GL_TEXTURE_2D, 0, m_Format, m_Width, m_Height, 0, m_Format, GL_UNSIGNED_BYTE, zeros.get());
+    GL_CHECK(glTexImage2D(GL_TEXTURE_2D, 0, m_Format, m_Width, m_Height, 0, m_Format, GL_UNSIGNED_BYTE, zeros.get()));
 }
 
 void Texture::setupFiltering (GLenum a_Target, GLint a_Filter, GLint a_Border) {
 
     // Setup default filtering
-    glTexParameteri(a_Target, GL_TEXTURE_MIN_FILTER, a_Filter);
-    glTexParameteri(a_Target, GL_TEXTURE_MAG_FILTER, a_Filter);    
+    GL_CHECK(glTexParameteri(a_Target, GL_TEXTURE_MIN_FILTER, a_Filter));
+    GL_CHECK(glTexParameteri(a_Target, GL_TEXTURE_MAG_FILTER, a_Filter));    
 
     // Setup default clamping
-    glTexParameteri(a_Target, GL_TEXTURE_WRAP_S, a_Border);
-    glTexParameteri(a_Target, GL_TEXTURE_WRAP_T, a_Border);
+    GL_CHECK(glTexParameteri(a_Target, GL_TEXTURE_WRAP_S, a_Border));
+    GL_CHECK(glTexParameteri(a_Target, GL_TEXTURE_WRAP_T, a_Border));
 }
 
 // ============================================================================
