@@ -104,8 +104,8 @@ int AcidbrotApp::initialize () {
     GL::Shader fshMandelbrot   (mandelbrotShader,        GL_FRAGMENT_SHADER, {{"MANDELBROT", "1"}});
     GL::Shader fshJulia        (mandelbrotShader,        GL_FRAGMENT_SHADER, {{"JULIA", "1"}});
     GL::Shader fshColorizer    ("shaders/colorizer.fsh", GL_FRAGMENT_SHADER);
-    GL::Shader fshDespeckle    ("shaders/despeckle.fsh", GL_FRAGMENT_SHADER);
-    GL::Shader fshFir3x3Abs    ("shaders/edges.fsh",     GL_FRAGMENT_SHADER, {{"TAPS", "9"}});
+    GL::Shader fshDespeckle    ("shaders/despeckle.fsh", GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
+    GL::Shader fshFir3x3Abs    ("shaders/edges.fsh",     GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
     GL::Shader fshHalo         ("shaders/halo.fsh",      GL_FRAGMENT_SHADER);
 
     m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
@@ -178,28 +178,16 @@ int AcidbrotApp::initialize () {
     FilterMask* mask = nullptr;
 
     mask = new FilterMask(3, 3);
-    mask->w(0, 0) = 0.25f;
-    mask->w(0, 1) = 1.00f;
-    mask->w(0, 2) = 0.25f;
-    mask->w(1, 0) = 1.00f;
-    mask->w(1, 1) = 1.00f;
-    mask->w(1, 2) = 1.00f;
-    mask->w(2, 0) = 0.25f;
-    mask->w(2, 1) = 1.00f;
-    mask->w(2, 2) = 0.25f;
+    mask->setWeights({0.25f, 1.00f, 0.25f,
+                      1.00f, 1.00f, 1.00f,
+                      0.25f, 1.00f, 0.25f});
     mask->normalizeWeights();
     m_Masks["despeckle"].reset(mask);
 
     mask = new FilterMask(3, 3);
-    mask->w(0, 0) = -0.5f;
-    mask->w(0, 1) = -1.0f;
-    mask->w(0, 2) = -0.5f;
-    mask->w(1, 0) = -1.0f;
-    mask->w(1, 1) = +6.0f;
-    mask->w(1, 2) = -1.0f;
-    mask->w(2, 0) = -0.5f;
-    mask->w(2, 1) = -1.0f;
-    mask->w(2, 2) = -0.5f;
+    mask->setWeights({-0.5f, -1.0f, -0.5f,
+                      -1.0f, +9.0f, -1.0f,
+                      -0.5f, -1.0f, -0.5f});
     mask->normalizeWeights();
     m_Masks["edges"].reset(mask);
 
@@ -698,11 +686,18 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
 
-        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"), 9, 
-                    m_Masks.at("despeckle")->getWeights()
+        auto& mask = m_Masks.at("despeckle");
+
+        GL_CHECK(glUniform1i(shader->getUniformLocation("filterTaps"),
+                    mask->getCountForShader()
                     ));
-        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"), 9,
-                    m_Masks.at("despeckle")->getOffsets()
+        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"),
+                    mask->getCountForShader(), 
+                    mask->getWeightsForShader()
+                    ));
+        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"),
+                    mask->getCountForShader(), 
+                    mask->getOffsetsForShader()
                     ));
 
         // Render
@@ -730,11 +725,18 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
 
-        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"), 9, 
-                    m_Masks.at("edges")->getWeights()
+        auto& mask = m_Masks.at("edges");
+
+        GL_CHECK(glUniform1i(shader->getUniformLocation("filterTaps"),
+                    mask->getCountForShader()
                     ));
-        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"), 9,
-                    m_Masks.at("edges")->getOffsets()
+        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"),
+                    mask->getCountForShader(), 
+                    mask->getWeightsForShader()
+                    ));
+        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"),
+                    mask->getCountForShader(), 
+                    mask->getOffsetsForShader()
                     ));
 
         // Render

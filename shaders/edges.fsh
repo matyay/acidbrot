@@ -7,8 +7,9 @@ in vec2 v_TexCoord;
 
 uniform sampler2D texture;
 
-uniform vec2  filterOffsets [TAPS];
-uniform float filterWeights [TAPS];
+uniform int   filterTaps;
+uniform vec2  filterOffsets [MAX_TAPS];
+uniform float filterWeights [MAX_TAPS];
 
 out vec4 o_Color;
 
@@ -17,7 +18,7 @@ void main(void) {
     float nsum = 0.0;
     float asum = 0.0;
 
-    for (int i=0; i<TAPS; ++i) {
+    for (int i=0; i<filterTaps; ++i) {
         vec4 pel = texture2D(texture, v_TexCoord + filterOffsets[i]);
 
         if (pel.a < 0.01) {
@@ -32,7 +33,7 @@ void main(void) {
     }
 
     nsum  = sqrt(abs(nsum));
-    asum /= float(TAPS);
+    asum /= float(filterTaps);
 
     o_Color = vec4(nsum, 0.0, 0.0, asum);
 }

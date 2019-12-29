@@ -7,30 +7,27 @@ in vec2 v_TexCoord;
 
 uniform sampler2D fractal;
 
-#define FILTER_N 9
-uniform vec2  filterOffsets [FILTER_N];
-uniform float filterWeights [FILTER_N];
+uniform int   filterTaps;
+uniform vec2  filterOffsets [MAX_TAPS];
+uniform float filterWeights [MAX_TAPS];
 
 out vec4 o_Color;
 
 void main(void) {
 
-    float sum  = 0.0;
-    float wsum = 0.0;
+    float sum = 0.0;
 
-    for (int i=0; i<FILTER_N; ++i) {
+    for (int i=0; i<filterTaps; ++i) {
         vec4  pel = texture2D(fractal, v_TexCoord + filterOffsets[i]);
         float w   = filterWeights[i];
 
         if (pel.a > 0.01) {
             float n = decode_iter(pel.rgb);
-            sum    += w * n;
-            wsum   += w;
+            sum += w * n;
         }
     }
 
-    if (wsum != 0.0) {
-        sum    /= wsum;
+    if (sum != 0.0) {
         o_Color = vec4(encode_iter(sum), 1.0);
     }
     else {
