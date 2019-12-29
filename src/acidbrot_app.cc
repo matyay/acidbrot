@@ -105,7 +105,7 @@ int AcidbrotApp::initialize () {
     GL::Shader fshJulia        (mandelbrotShader,        GL_FRAGMENT_SHADER, {{"JULIA", "1"}});
     GL::Shader fshColorizer    ("shaders/colorizer.fsh", GL_FRAGMENT_SHADER);
     GL::Shader fshDespeckle    ("shaders/despeckle.fsh", GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
-    GL::Shader fshFir3x3Abs    ("shaders/edges.fsh",     GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
+    GL::Shader fshHaloMask     ("shaders/haloMask.fsh",  GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
     GL::Shader fshHalo         ("shaders/halo.fsh",      GL_FRAGMENT_SHADER);
 
     m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
@@ -122,22 +122,22 @@ int AcidbrotApp::initialize () {
         "julia"
         ));
 
-    m_Shaders["colorizer"]  = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
-        vshGeneric,
-        fshColorizer,
-        "colorizer"
-        ));
-
     m_Shaders["despeckle"]  = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
         vshGeneric,
         fshDespeckle,
         "despeckle"
         ));
 
-    m_Shaders["edges"]      = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+    m_Shaders["colorizer"]  = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
         vshGeneric,
-        fshFir3x3Abs,
-        "edges"
+        fshColorizer,
+        "colorizer"
+        ));
+
+    m_Shaders["haloMask"]   = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+        vshGeneric,
+        fshHaloMask,
+        "haloMask"
         ));
 
     m_Shaders["halo"]       = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
@@ -164,12 +164,13 @@ int AcidbrotApp::initialize () {
     };
 
     addParameter(Parameter("fractalIter", true,  256.0,  10.0, 512.0, 100.000));
-    addParameter(Parameter("colorGamma",  true,  2.0000, 1.0,  5.0, 1.000));
-    addParameter(Parameter("colorCycles", true,  4.0000, 1.0,  6.0, 1.000));
-    addParameter(Parameter("haloStepFac", true,  0.9875, 0.5,  1.0, 0.025));
-    addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5,  1.0, 0.100));
-    addParameter(Parameter("haloGain",    true,  1.0000, 0.5,  5.0, 1.000));
-    addParameter(Parameter("motionBlur",  false, 0.8500, 0.05, 1.0, 0.500));
+    addParameter(Parameter("colorGamma",  true,  2.0000, 1.0,  5.0,   1.000));
+    addParameter(Parameter("colorCycles", true,  4.0000, 1.0,  6.0,   1.000));
+    addParameter(Parameter("haloSteps",   false, 15.0,   10.0, 50.0,  20.0));
+    addParameter(Parameter("haloStepFac", true,  0.9875, 0.5,  1.0,   0.025));
+    addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5,  1.0,   0.100));
+    addParameter(Parameter("haloGain",    true,  1.0000, 0.5,  5.0,   1.000));
+    addParameter(Parameter("motionBlur",  false, 0.8500, 0.05, 1.0,   0.500));
 
     m_CurrParam = m_Parameters.end();
 
@@ -186,7 +187,7 @@ int AcidbrotApp::initialize () {
 
     mask = new FilterMask(3, 3);
     mask->setWeights({-0.5f, -1.0f, -0.5f,
-                      -1.0f, +9.0f, -1.0f,
+                      -1.0f, +6.0f, -1.0f,
                       -0.5f, -1.0f, -0.5f});
     mask->normalizeWeights();
     m_Masks["edges"].reset(mask);
@@ -239,11 +240,11 @@ int AcidbrotApp::initializeFramebuffers () {
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
 
-    m_Framebuffers["fractalEdges"] = std::unique_ptr<GL::Framebuffer>(
+    m_Framebuffers["fractalColor"] = std::unique_ptr<GL::Framebuffer>(
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
 
-    m_Framebuffers["fractalColor"] = std::unique_ptr<GL::Framebuffer>(
+    m_Framebuffers["haloMask"] = std::unique_ptr<GL::Framebuffer>(
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
 
@@ -603,7 +604,7 @@ int AcidbrotApp::loop (double dt) {
     {
         const std::map<Fractal, std::string> shaderName = {
             {Fractal::Mandelbrot, "mandelbrot"},
-            {Fractal::Julia, "julia"}
+            {Fractal::Julia,      "julia"}
         };
 
         GL::Framebuffer* framebuffer = m_Framebuffers.at("fractalRaw").get();
@@ -686,46 +687,10 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
 
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
+
         auto& mask = m_Masks.at("despeckle");
-
-        GL_CHECK(glUniform1i(shader->getUniformLocation("filterTaps"),
-                    mask->getCountForShader()
-                    ));
-        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"),
-                    mask->getCountForShader(), 
-                    mask->getWeightsForShader()
-                    ));
-        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"),
-                    mask->getCountForShader(), 
-                    mask->getOffsetsForShader()
-                    ));
-
-        // Render
-        m_ScreenQuad->drawFullscreen();
-
-        // Cleanup
-        GL_CHECK(glActiveTexture(GL_TEXTURE0));
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
-
-        GL_CHECK(glUseProgram(0));
-        fbDst->disable();
-    }
-
-    // ................................
-    // Detect edges in the fractal image
-    {
-        GL::ShaderProgram* shader = m_Shaders.at("edges").get();
-        GL::Framebuffer*   fbSrc  = m_Framebuffers.at("fractalFlt").get();
-        GL::Framebuffer*   fbDst  = m_Framebuffers.at("fractalEdges").get();
-
-        // Setup
-        fbDst->enable();
-        GL_CHECK(glUseProgram(shader->get()));
-
-        GL_CHECK(glActiveTexture(GL_TEXTURE0));
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
-
-        auto& mask = m_Masks.at("edges");
 
         GL_CHECK(glUniform1i(shader->getUniformLocation("filterTaps"),
                     mask->getCountForShader()
@@ -785,12 +750,65 @@ int AcidbrotApp::loop (double dt) {
         fbDst->disable();
     }
 
+
     // ................................
-    // Render with halo effct
+    // Create the halo effect mask
+    {
+        GL::ShaderProgram* shader  = m_Shaders.at("haloMask").get();
+        GL::Framebuffer*   fbIter  = m_Framebuffers.at("fractalFlt").get();
+        GL::Framebuffer*   fbColor = m_Framebuffers.at("fractalColor").get();
+        GL::Framebuffer*   fbDst   = m_Framebuffers.at("haloMask").get();
+//        GL::Framebuffer*   fbDst   = m_Framebuffers.at("master").get();
+
+        // Setup
+        fbDst->enable();
+        GL_CHECK(glUseProgram(shader->get()));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbIter->getTexture()));
+        GL_CHECK(glUniform1i(shader->getUniformLocation("fractalIter"), 0));
+
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE1));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbColor->getTexture()));
+        GL_CHECK(glUniform1i(shader->getUniformLocation("fractalColor"), 1));
+
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
+
+        auto& mask = m_Masks.at("edges");
+
+        GL_CHECK(glUniform1i(shader->getUniformLocation("filterTaps"),
+                    mask->getCountForShader()
+                    ));
+        GL_CHECK(glUniform1fv(shader->getUniformLocation("filterWeights"),
+                    mask->getCountForShader(), 
+                    mask->getWeightsForShader()
+                    ));
+        GL_CHECK(glUniform2fv(shader->getUniformLocation("filterOffsets"),
+                    mask->getCountForShader(), 
+                    mask->getOffsetsForShader()
+                    ));
+
+        // Render
+        m_ScreenQuad->drawFullscreen();
+
+        // Cleanup
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+
+        GL_CHECK(glUseProgram(0));
+        fbDst->disable();
+    }
+
+    // ................................
+    // Add the halo effect, render with motion blur
     {
         GL::ShaderProgram* shader   = m_Shaders.at("halo").get();
         GL::Framebuffer*   fbColor  = m_Framebuffers.at("fractalColor").get();
-        GL::Framebuffer*   fbMask   = m_Framebuffers.at("fractalEdges").get();
+        GL::Framebuffer*   fbMask   = m_Framebuffers.at("haloMask").get();
         GL::Framebuffer*   fbMaster = m_Framebuffers.at("master").get();
 
         // Setup
@@ -805,6 +823,10 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUniform1i(shader->getUniformLocation("haloMask"), 1));
 
         setUniforms();
+
+        GL_CHECK(glUniform1i(shader->getUniformLocation("haloSteps"),
+                    int(m_Parameters.at("haloSteps").value)
+                    ));
 
         fbMaster->enable();
 
@@ -828,7 +850,6 @@ int AcidbrotApp::loop (double dt) {
 
         GL_CHECK(glUseProgram(0));
     }
-
 
     // ................................
     // Geometry
