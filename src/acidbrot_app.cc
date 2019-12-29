@@ -171,8 +171,8 @@ int AcidbrotApp::initialize () {
     };
 
     addParameter(Parameter("fractalIter", true,  256.0,  10.0, 512.0, 100.000));
-    addParameter(Parameter("colorGamma",  true,  2.0000, 1.0,  5.0,   1.000));
-    addParameter(Parameter("colorCycles", true,  4.0000, 1.0,  6.0,   1.000));
+    addParameter(Parameter("colorExp",    true,  1.0000, 0.5,  2.0,   0.500));
+    addParameter(Parameter("colorCycles", true,  1.0000, 1.0,  6.0,   1.000));
     addParameter(Parameter("haloSteps",   false, 15.0,   10.0, 50.0,  20.0));
     addParameter(Parameter("haloStepFac", true,  0.9875, 0.5,  1.0,   0.025));
     addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5,  1.0,   0.100));
@@ -569,7 +569,7 @@ int AcidbrotApp::loop (double dt) {
         control.zoom  *= 2.0f;
 
         // Colorization speed
-        control.color *= 0.2f;
+        control.color *= 0.01f;
 
         // Julia set abs(C), angle(C)
         control.julia[0] *= 0.2f;

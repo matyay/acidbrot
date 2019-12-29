@@ -9,7 +9,7 @@ uniform sampler2D fractal;
 uniform sampler2D colormap;
 uniform float     colormapPos;
 
-uniform float     colorGamma;
+uniform float     colorExp;
 uniform float     colorCycles;
 
 out vec4 o_Color;
@@ -27,9 +27,8 @@ void main(void) {
     }
 
     // Color mapping
-    float m = n / 255.0f; // MAX_ITER
-    m = pow(m, 1.0/colorGamma) * colorCycles;
-
+    float e = min(0.0, -colorExp * n / 50.0);
+    float m = (1.0 - exp(e)) * colorCycles;
     o_Color = vec4(texture2D(colormap, vec2(m, colormapPos)).rgb, f.a);
 }
 
