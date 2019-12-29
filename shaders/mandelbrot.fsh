@@ -64,7 +64,7 @@ void main(void) {
 
     // Iteration limit reached.
     if (n >= float(fractalIter)) {
-        o_Color = vec4(0.0, 0.0, 0.0, 0.0);
+        o_Color = vec4(encode_iter(n), 0.0);
         return;
     }
 

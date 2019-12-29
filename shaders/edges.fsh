@@ -15,26 +15,18 @@ out vec4 o_Color;
 
 void main(void) {
 
+    // Filter the iteration count
     float nsum = 0.0;
-    float asum = 0.0;
 
     for (int i=0; i<filterTaps; ++i) {
-        vec4 pel = texture2D(texture, v_TexCoord + filterOffsets[i]);
+        vec3  iter = texture2D(texture, v_TexCoord + filterOffsets[i]).rgb;
+        float w    = filterWeights[i];
 
-        if (pel.a < 0.01) {
-            o_Color = vec4(0.0, 0.0, 0.0, 0.0);
-            return;
-        }
-
-        float n = decode_iter(pel.rgb);
-
-        nsum += n * filterWeights[i];
-        asum += pel.a;
+        nsum += w * decode_iter(iter);
     }
 
     nsum  = sqrt(abs(nsum));
-    asum /= float(filterTaps);
 
-    o_Color = vec4(nsum, 0.0, 0.0, asum);
+    o_Color = vec4(nsum, 0.0, 0.0, 1.0);
 }
 
