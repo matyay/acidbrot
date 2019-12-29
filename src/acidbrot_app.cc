@@ -107,6 +107,7 @@ int AcidbrotApp::initialize () {
     GL::Shader fshDespeckle    ("shaders/despeckle.fsh", GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
     GL::Shader fshHaloMask     ("shaders/haloMask.fsh",  GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
     GL::Shader fshHalo         ("shaders/halo.fsh",      GL_FRAGMENT_SHADER);
+    GL::Shader fshNoiseDispl   ("shaders/noise_displacement.fsh", GL_FRAGMENT_SHADER);
 
     m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
 
@@ -146,6 +147,12 @@ int AcidbrotApp::initialize () {
         "halo"
         ));
 
+    m_Shaders["noise_displacement"] = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+        vshGeneric,
+        fshNoiseDispl,
+        "noise_displacement"
+        ));
+
     //GL::Shader vshGeometry ("shaders/temp/geometry.vsh", GL_VERTEX_SHADER);
     //GL::Shader gshGeometry ("shaders/temp/geometry.gsh", GL_GEOMETRY_SHADER);
     //GL::Shader fshGeometry ("shaders/temp/geometry.fsh", GL_FRAGMENT_SHADER);
@@ -171,6 +178,8 @@ int AcidbrotApp::initialize () {
     addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5,  1.0,   0.100));
     addParameter(Parameter("haloGain",    true,  1.0000, 0.5,  5.0,   1.000));
     addParameter(Parameter("motionBlur",  false, 0.8500, 0.05, 1.0,   0.500));
+    addParameter(Parameter("weaveAmpl",   true,  0.0000, 0.0,  2.0,   0.500));
+    addParameter(Parameter("weaveSpeed",  false, 0.5000, 0.05, 1.0,   0.500));
 
     m_CurrParam = m_Parameters.end();
 
@@ -194,8 +203,12 @@ int AcidbrotApp::initialize () {
 
     // ..........................................
 
-    m_Textures["colormap"]  = std::unique_ptr<GL::Texture>(
+    m_Textures["colormap"] = std::unique_ptr<GL::Texture>(
         new GL::Texture("media/colormap.png")
+    );
+
+    m_Textures3d["noise"]  = std::unique_ptr<GL::Texture3d>(
+        new GL::Texture3d("media/noise.dat")
     );
 
     // ..........................................
@@ -245,6 +258,10 @@ int AcidbrotApp::initializeFramebuffers () {
     );
 
     m_Framebuffers["haloMask"] = std::unique_ptr<GL::Framebuffer>(
+        new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
+    );
+
+    m_Framebuffers["preScreenFx"] = std::unique_ptr<GL::Framebuffer>(
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
 
@@ -807,12 +824,12 @@ int AcidbrotApp::loop (double dt) {
     }
 
     // ................................
-    // Add the halo effect, render with motion blur
+    // Add the halo effect
     {
         GL::ShaderProgram* shader   = m_Shaders.at("halo").get();
         GL::Framebuffer*   fbColor  = m_Framebuffers.at("fractalColor").get();
         GL::Framebuffer*   fbMask   = m_Framebuffers.at("haloMask").get();
-        GL::Framebuffer*   fbMaster = m_Framebuffers.at("master").get();
+        GL::Framebuffer*   fbMaster = m_Framebuffers.at("preScreenFx").get();
 
         // Setup
         GL_CHECK(glUseProgram(shader->get()));
@@ -833,6 +850,53 @@ int AcidbrotApp::loop (double dt) {
 
         fbMaster->enable();
 
+        // Render
+        m_ScreenQuad->drawFullscreen();
+
+        // Cleanup
+        fbMaster->disable();
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+        GL_CHECK(glActiveTexture(GL_TEXTURE1));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+
+        GL_CHECK(glUseProgram(0));
+    }
+
+    // ................................
+    // Noise displacement
+    {
+        // Prepare time counter for shaders. Counts from 0.0 to 1.0 modulo 1.0 in
+        // seconds
+        static float weaveTime = 0.0f;
+        weaveTime += dt * m_Parameters.at("weaveSpeed").value;
+        while (weaveTime >= 1.0f) weaveTime -= 1.0f;
+
+        GL::ShaderProgram* shader   = m_Shaders.at("noise_displacement").get();
+        GL::Framebuffer*   fbColor  = m_Framebuffers.at("preScreenFx").get();
+        GL::Framebuffer*   fbMaster = m_Framebuffers.at("master").get();
+
+        // Setup
+        GL_CHECK(glUseProgram(shader->get()));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbColor->getTexture()));
+        GL_CHECK(glUniform1i(shader->getUniformLocation("color"), 0));
+
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE1));
+        GL_CHECK(glBindTexture(GL_TEXTURE_3D, m_Textures3d.at("noise")->get()));
+        GL_CHECK(glUniform1i(shader->getUniformLocation("noise"), 1));
+
+        setUniforms();
+
+        GL_CHECK(glUniform1f(shader->getUniformLocation("time"), weaveTime));
+
+        fbMaster->enable();
+
         GL_CHECK(glEnable(GL_BLEND));
         GL_CHECK(glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD));
         GL_CHECK(glBlendFuncSeparate(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA, GL_ONE, GL_ZERO));
@@ -847,7 +911,7 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glActiveTexture(GL_TEXTURE0));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_3D, 0));
 
         GL_CHECK(glDisable(GL_BLEND));
 
@@ -879,10 +943,8 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUseProgram(0));
     }*/
 
-
     // ................................
     // Copy the master framebuffer
-
     {
         GL::Framebuffer* fbMaster = m_Framebuffers.at("master").get();
 

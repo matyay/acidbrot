@@ -5,6 +5,7 @@
 #include <gl/font.hh>
 #include <gl/shader.hh>
 #include <gl/texture.hh>
+#include <gl/texture3d.hh>
 #include <gl/framebuffer.hh>
 #include <gl/primitives.hh>
 
@@ -71,6 +72,8 @@ protected:
     GL::Map<GL::ShaderProgram>  m_Shaders;
     /// OpenGL textures
     GL::Map<GL::Texture>        m_Textures;
+    /// OpenGL 3D textures
+    GL::Map<GL::Texture3d>      m_Textures3d;
     /// OpenGL framebuffers
     GL::Map<GL::Framebuffer>    m_Framebuffers;
 
