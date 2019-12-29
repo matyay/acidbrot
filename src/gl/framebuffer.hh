@@ -34,9 +34,9 @@ public:
     GLenum  getFormat   () const;
    
     /// Enables the framebuffer as the render target
-    bool    enable      ();
+    void    enable      ();
     /// Disables the framebuffer as the render target
-    bool    disable     ();
+    void    disable     ();
     
     /// Retrieves pixel data. The framebuffer must be active
     std::unique_ptr<uint8_t> readPixels (size_t a_Index = 0);

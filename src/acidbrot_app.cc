@@ -195,7 +195,7 @@ int AcidbrotApp::initialize () {
     // ..........................................
 
     m_Textures["colormap"]  = std::unique_ptr<GL::Texture>(
-        new GL::Texture("media/colormap.png", GL_LINEAR, GL_MIRRORED_REPEAT)
+        new GL::Texture("media/colormap.png")
     );
 
     // ..........................................
@@ -733,6 +733,9 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glActiveTexture(GL_TEXTURE1));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_Textures.at("colormap")->get()));
         GL_CHECK(glUniform1i(shader->getUniformLocation("colormap"), 1));
+
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT));
 
         GL_CHECK(glUniform1f(shader->getUniformLocation("colormapPos"), m_Viewport.position.color));
         setUniforms();

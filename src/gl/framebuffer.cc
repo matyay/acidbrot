@@ -117,11 +117,11 @@ GLenum Framebuffer::getFormat() const {
 
 // ============================================================================
 
-bool Framebuffer::enable () {
+void Framebuffer::enable () {
 
     // Already active
     if (m_IsActive) {
-        return false;
+        throw std::runtime_error("Framebuffer already in use!");
     }
 
     // Store the context
@@ -133,15 +133,20 @@ bool Framebuffer::enable () {
     GL_CHECK(glViewport(0, 0, m_Width, m_Height));
 
     m_IsActive = true;
-
-    return true;
 }
 
-bool Framebuffer::disable () {
+void Framebuffer::disable () {
 
     // Not active
     if (!m_IsActive) {
-        return false;
+        throw std::runtime_error("Framebuffer not in use!");
+    }
+
+    // An other framebuffer is active ?
+    GLint currBinding = 0;
+    GL_CHECK(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currBinding));
+    if (currBinding != m_Framebuffer) {
+        throw std::runtime_error("Framebuffer bound but elsewhere!");
     }
 
     // Restore bindings
@@ -155,8 +160,6 @@ bool Framebuffer::disable () {
     ));
 
     m_IsActive = false;
-
-    return true;
 }
 
 // ============================================================================

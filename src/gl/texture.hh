@@ -14,52 +14,60 @@ class Texture
 public:
 
     /// Creates an empty texture
-    Texture   (GLint a_Filter=GL_LINEAR,
-               GLint a_Border=GL_REPEAT);
-
+    Texture   ();
     /// Creates an empty texture with given resolution and format
-    Texture   (size_t a_Width, size_t a_Height, GLenum a_Format,
-               GLint a_Filter=GL_LINEAR,
-               GLint a_Border=GL_REPEAT);
-
+    Texture   (size_t a_Width, size_t a_Height, GLenum a_Format);
     /// Creates a texture from file
-    Texture   (const std::string a_FileName,
-               GLint a_Filter=GL_LINEAR,
-               GLint a_Border=GL_REPEAT);
+    Texture   (const std::string a_FileName);
     
     /// Destructor
     virtual ~Texture  ();
 
-    /// Retreives texture handle
+    /// Retreives the texture handle
     GLuint get () const;
     
-    /// Retireves texture parameters
+    /// Returns width (X)
     size_t getWidth  () const;
+    /// Returns width (Y)
     size_t getHeight () const;
+    /// Returns color format
     GLenum getFormat () const;
 
     /// Retrieves desired texture target
-    virtual GLenum getTarget () const;
+    GLenum getTarget () const;
+
+    /// Binds the texture
+    virtual void bind ();
+    /// Unbinds the texture
+    virtual void unbind ();
 
     /// Clears the texture
     virtual void clear ();
 
 protected:
 
-    /// Resolution
-    size_t  m_Width  = 0;
-    size_t  m_Height = 0;
-    GLenum  m_Format = 0;
-
     /// Texture handle
     GLuint  m_Texture = GL_INVALID_VALUE;
-    
+   
+    /// Bound flag
+    bool    m_IsBound = false;
+
+    /// Width (X)
+    size_t  m_Width  = 0;
+    /// Height (Y)
+    size_t  m_Height = 0;
+    /// Format
+    GLenum  m_Format = 0;
+
+    /// Bind target
+    GLenum  m_BindTarget = 0;
+    /// Bint target retrieve
+    GLenum  m_BindRetrieve = 0;
+
     // ................................
     
     /// Create the OpenGL object. Raises an exception on failure
-    void create ();
-    /// Setup texture filtering
-    void setupFiltering (GLenum a_Target, GLint a_Filter, GLint a_Border);
+    virtual void create ();
 };
 
 // ============================================================================
