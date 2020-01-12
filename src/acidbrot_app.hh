@@ -52,11 +52,19 @@ protected:
                       int a_Action, 
                       int a_Mods);
 
+    /// Updates timers
+    void updateTimers (double dt);
+
     /// Sets shader uniforms
     void setUniforms ();
 
     /// Saves a screenshot
     void takeScreenshot ();
+
+    /// Updates the scene
+    int updateScene (double dt);
+    /// Renders the scene
+    int renderScene ();
 
     // ..........................................
 
@@ -86,6 +94,13 @@ protected:
     bool m_HaveFp64 = false;
     /// VSync enabled
     bool m_EnableVSync = true;
+
+    /// Fix the framerate
+    bool  m_FixedFrameRate  = false;
+    /// Fixed frame rate
+    float m_TargetFrameRate = 25.0f;
+    /// Frame timer
+    float m_FrameTime = 0.0f;
 
     /// Viewport data
     union Viewport {
@@ -140,6 +155,9 @@ protected:
     std::map<std::string, Parameter> m_Parameters;
     /// Current parameter
     std::map<std::string, Parameter>::iterator m_CurrParam;
+
+    /// Timers
+    std::map<std::string, double> m_Timers;
 
     // ..........................................
 

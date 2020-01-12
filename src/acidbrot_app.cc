@@ -232,6 +232,11 @@ int AcidbrotApp::initialize () {
     m_Viewport.position.julia[0] = 0.7885f;
     m_Viewport.position.julia[1] = 0.0f;
 
+    // ..........................................
+    
+    // Timers
+    m_Timers["weave"] = 0.0;
+
     return 0;
 }
 
@@ -399,8 +404,19 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
 
     // Enable / disable VSync
     if (a_Key == GLFW_KEY_F11 && a_Action == GLFW_PRESS) {
-        m_EnableVSync = !m_EnableVSync;
-        glfwSwapInterval(m_EnableVSync);
+        if (!m_FixedFrameRate) {
+            m_EnableVSync = !m_EnableVSync;
+            glfwSwapInterval(m_EnableVSync);
+        }
+    }
+
+    // Enable / disable fixed frame rate
+    if (a_Key == GLFW_KEY_F10 && a_Action == GLFW_PRESS) {
+        m_FixedFrameRate = !m_FixedFrameRate;
+        if (m_FixedFrameRate) {
+            m_EnableVSync = false;
+            glfwSwapInterval(m_EnableVSync);
+        }
     }
 
     // Screenshot
@@ -433,31 +449,20 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
     }
 }
 
-std::array<float, 2> splitDouble (double x) {
-    float a = (float)x;
-    float b = x - (double)a;
+void AcidbrotApp::updateTimers (double dt) {
 
-    return std::array<float, 2>({a, b});
+    double timer = 0.0;
+
+    // Prepare time counter for shaders. Counts from 0.0 to 1.0 modulo 1.0 in
+    // seconds
+    timer  = m_Timers["weave"];
+    timer += dt * m_Parameters.at("weaveSpeed").value;
+    while (timer >= 1.0f) timer -= 1.0f;
+    m_Timers.at("weave") = timer;
 }
 
-std::array<double, 2> splitLongDouble (long double x) {
-    double a = (double)x;
-    double b = x - (long double)a;
-
-    return std::array<double, 2>({a, b});
-}
-
-int AcidbrotApp::loop (double dt) {
-
-    // Escape
-    if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        return 1;
-    }
-
-    // Window size changed
-    if (sizeChanged(m_Window)) {
-        initializeFramebuffers();
-    }
+/// Updates the scene
+int AcidbrotApp::updateScene (double dt) {
 
     // ................................
     // Shader parameters
@@ -603,18 +608,30 @@ int AcidbrotApp::loop (double dt) {
     }
 
     // ................................
-    // Initialize GL rendering
+    // Timers
+    updateTimers(dt);
 
-    // Get the main framebuffer size
-    int fbWidth, fbHeight;
-    glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
-    //glfwGetWindowSize(m_Window, &fbWidth, &fbHeight);
+    return 0;
+}
 
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-    GL_CHECK(glViewport(0, 0, fbWidth, fbHeight));
+// ============================================================================
 
-    GL_CHECK(glClearColor(0.0f, 0.0f, 0.5f, 1.0f));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+//std::array<float, 2> splitDouble (double x) {
+//    float a = (float)x;
+//    float b = x - (double)a;
+//
+//    return std::array<float, 2>({a, b});
+//}
+//
+//std::array<double, 2> splitLongDouble (long double x) {
+//    double a = (double)x;
+//    double b = x - (long double)a;
+//
+//    return std::array<double, 2>({a, b});
+//}
+
+/// Renders the scene
+int AcidbrotApp::renderScene () {
 
     // ................................
     // Generate the fractal data
@@ -867,12 +884,6 @@ int AcidbrotApp::loop (double dt) {
     // ................................
     // Noise displacement
     {
-        // Prepare time counter for shaders. Counts from 0.0 to 1.0 modulo 1.0 in
-        // seconds
-        static float weaveTime = 0.0f;
-        weaveTime += dt * m_Parameters.at("weaveSpeed").value;
-        while (weaveTime >= 1.0f) weaveTime -= 1.0f;
-
         GL::ShaderProgram* shader   = m_Shaders.at("noise_displacement").get();
         GL::Framebuffer*   fbColor  = m_Framebuffers.at("preScreenFx").get();
         GL::Framebuffer*   fbMaster = m_Framebuffers.at("master").get();
@@ -893,7 +904,7 @@ int AcidbrotApp::loop (double dt) {
 
         setUniforms();
 
-        GL_CHECK(glUniform1f(shader->getUniformLocation("time"), weaveTime));
+        GL_CHECK(glUniform1f(shader->getUniformLocation("time"), m_Timers.at("weave")));
 
         fbMaster->enable();
 
@@ -943,8 +954,69 @@ int AcidbrotApp::loop (double dt) {
         GL_CHECK(glUseProgram(0));
     }*/
 
+
+    return 0;
+}
+
+// ============================================================================
+
+int AcidbrotApp::loop (double dt) {
+
+    // Escape
+    if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        return 1;
+    }
+
+    // Window size changed
+    if (sizeChanged(m_Window)) {
+        initializeFramebuffers();
+    }
+
     // ................................
-    // Copy the master framebuffer
+    // Force fixed frame rate
+    if (m_FixedFrameRate) {
+
+        m_FrameTime -= dt;
+        if (m_FrameTime > 0.0f)
+            return 0;
+
+        dt = 1.0f / m_TargetFrameRate;
+        m_FrameTime = dt;
+    }
+
+    // ................................
+    // Update the scene
+    updateScene(dt);
+
+    // ................................
+    // Initialize GL rendering
+
+    // Get the main framebuffer size
+    int fbWidth, fbHeight;
+    glfwGetFramebufferSize(m_Window, &fbWidth, &fbHeight);
+    //glfwGetWindowSize(m_Window, &fbWidth, &fbHeight);
+
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    GL_CHECK(glViewport(0, 0, fbWidth, fbHeight));
+
+    GL_CHECK(glClearColor(0.0f, 0.0f, 0.5f, 1.0f));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+
+    // ................................
+    // Render the scene
+    renderScene();
+
+    // Record video
+    // TODO:
+
+    // Take a screenshot
+    if (m_DoScreenshot) {
+        takeScreenshot();
+        m_DoScreenshot = false;
+    }
+
+    // ................................
+    // Copy the master framebuffer to the screen backbuffer
     {
         GL::Framebuffer* fbMaster = m_Framebuffers.at("master").get();
 
@@ -957,14 +1029,8 @@ int AcidbrotApp::loop (double dt) {
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
 
-    // Screenshot
-    if (m_DoScreenshot) {
-        takeScreenshot();
-        m_DoScreenshot = false;
-    }
-
     // ................................
-    // Text
+    // Render text overlay
     {
         GL::ShaderProgram* shaderProgram = m_Shaders.at("font").get();
 
@@ -1005,10 +1071,7 @@ int AcidbrotApp::loop (double dt) {
     }
 
     // ................................
-    // Present
-
-    // Show
-    GL_CHECK(glFlush());
+    // Present the screen backbuffer
 
     // Swap buffers
     glfwSwapBuffers(m_Window);
