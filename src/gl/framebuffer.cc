@@ -16,10 +16,10 @@ Framebuffer::Framebuffer (size_t a_Width, size_t a_Height, GLenum a_Format, size
 {
 
     // Check limit of maximum color attachments
-#ifdef GL_MAX_COLOR_ATTACHMENTS_NV
-    if (a_Count > GL_MAX_COLOR_ATTACHMENTS_NV) {
+#ifdef GL_MAX_COLOR_ATTACHMENTS
+    if (a_Count > GL_MAX_COLOR_ATTACHMENTS) {
         throw std::runtime_error(
-            stringf("Too many color attachments requested (%d, max is %d)", a_Count, GL_MAX_COLOR_ATTACHMENTS_NV)
+            stringf("Too many color attachments requested (%d, max is %d)", a_Count, GL_MAX_COLOR_ATTACHMENTS)
         );
     }
 #else
@@ -60,8 +60,8 @@ Framebuffer::Framebuffer (size_t a_Width, size_t a_Height, GLenum a_Format, size
     
     // Setup color attachments
     for (size_t i=0; i<m_Textures.size(); ++i) {
-#ifdef GL_MAX_COLOR_ATTACHMENTS_NV
-        GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_NV + i, GL_TEXTURE_2D, m_Textures[i], 0));
+#ifdef GL_MAX_COLOR_ATTACHMENTS
+        GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, m_Textures[i], 0));
 #else
         GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_Textures[i], 0)); // There will always be 1 texture.
 #endif        
@@ -126,11 +126,16 @@ void Framebuffer::enable () {
 
     // Store the context
     GL_CHECK(glGetFloatv(GL_VIEWPORT, m_SavedContext.viewport));
-    GL_CHECK(glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint*)&m_SavedContext.framebuffer));
+    GL_CHECK(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, (GLint*)&m_SavedContext.framebuffer));
 
     // Enable the framebuffer
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, m_Framebuffer));
+    GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_Framebuffer));    
     GL_CHECK(glViewport(0, 0, m_Width, m_Height));
+
+    GLenum drawBuffers[GL_MAX_COLOR_ATTACHMENTS];
+    for (size_t i=0; i<m_Textures.size(); ++i)
+        drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
+    glDrawBuffers(m_Textures.size(), drawBuffers);
 
     m_IsActive = true;
 }
@@ -144,13 +149,13 @@ void Framebuffer::disable () {
 
     // An other framebuffer is active ?
     GLint currBinding = 0;
-    GL_CHECK(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currBinding));
+    GL_CHECK(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &currBinding));
     if (currBinding != m_Framebuffer) {
         throw std::runtime_error("Framebuffer bound but elsewhere!");
     }
 
     // Restore bindings
-    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, m_SavedContext.framebuffer));
+    GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_SavedContext.framebuffer));
 
     GL_CHECK(glViewport(
         m_SavedContext.viewport[0],
@@ -166,8 +171,8 @@ void Framebuffer::disable () {
 
 std::unique_ptr<uint8_t> Framebuffer::readPixels (size_t a_Index) {
 
-    // TODO: Index
-    (void)a_Index;
+    // Flush the pipeline
+    GL_CHECK(glFlush());
 
     // Sample size
     size_t sampleSize;
@@ -188,6 +193,9 @@ std::unique_ptr<uint8_t> Framebuffer::readPixels (size_t a_Index) {
     auto   data = std::unique_ptr<uint8_t>(new uint8_t[size]);
 
     // Read pixels
+    GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, m_Framebuffer));
+    GL_CHECK(glReadBuffer(GL_COLOR_ATTACHMENT0 + a_Index));
+
     GL_CHECK(glPixelStorei(GL_PACK_ALIGNMENT, 1));
     GL_CHECK(glReadPixels(0, 0, m_Width, m_Height, m_Format,
                           GL_UNSIGNED_BYTE, data.get()));

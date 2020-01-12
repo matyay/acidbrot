@@ -6,3 +6,4 @@ Makefile
 *.a
 *.swp
 screenshot*.png
+video*.h264

@@ -84,6 +84,7 @@ set(THIRD_PARTY_LIBS
     spdlog
     stb
     png
+    x264
 )
 
 # Common libs

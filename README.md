@@ -12,6 +12,7 @@ Prerequisites:
 - libglfw3 (v3.2+)
 - libX11
 - libpng
+- libx264
 
 Installation:
 ```
@@ -40,7 +41,10 @@ Keyboard:
 |F12|Save a screenshot|
 |Alt+Enter|Switch between fullscreen and windowed mode|
 |F1-F8|Change window size (and resolution)|
-|F11|Switch VSync on/off|
+|F9|Switch VSync off and set fixed frame rate mode on/off|
+|F10|Switch VSync on/off|
+|F11|Start/stop recording video|
+|F12|Take a screenshot|
 |Home/End|Select a parameter to modify (name and value shown in the upper-left corner|
 |PgUp/PgDn|Adjust the selected parameter value|
 |Esc|Exit the application|

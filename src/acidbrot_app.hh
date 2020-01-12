@@ -11,9 +11,12 @@
 
 #include "glfw_app.hh"
 #include "filter_mask.hh"
+#include "video_encoder.hh"
 
 #include <vector>
 #include <array>
+#include <iostream>
+#include <fstream>
 
 // ============================================================================
 
@@ -61,6 +64,13 @@ protected:
     /// Saves a screenshot
     void takeScreenshot ();
 
+    /// Starts video recording
+    void startRecording ();
+    /// Stops video recording
+    void stopRecording ();
+    /// Records a video frame
+    void recordFrame ();
+
     /// Updates the scene
     int updateScene (double dt);
     /// Renders the scene
@@ -98,7 +108,7 @@ protected:
     /// Fix the framerate
     bool  m_FixedFrameRate  = false;
     /// Fixed frame rate
-    float m_TargetFrameRate = 25.0f;
+    float m_TargetFrameRate = 30.0f;
     /// Frame timer
     float m_FrameTime = 0.0f;
 
@@ -158,6 +168,19 @@ protected:
 
     /// Timers
     std::map<std::string, double> m_Timers;
+
+    /// Video recording
+    struct {
+
+        /// Running flag
+        bool running = false;
+
+        /// The encoder
+        std::unique_ptr<VideoEncoder> encoder;
+        /// Output file
+        std::ofstream file;
+
+    } m_VideoRec;
 
     // ..........................................
 

@@ -2,7 +2,8 @@
 
 #include "acidbrot_app.hh"
 
-#include <utils/savepng.hh>
+#include "utils/savepng.hh"
+#include "utils/param_dict.hh"
 
 #include <gl/utils.hh>
 #include <gl/primitives.hh>
@@ -108,6 +109,7 @@ int AcidbrotApp::initialize () {
     GL::Shader fshHaloMask     ("shaders/haloMask.fsh",  GL_FRAGMENT_SHADER, {{"MAX_TAPS", "25"}});
     GL::Shader fshHalo         ("shaders/halo.fsh",      GL_FRAGMENT_SHADER);
     GL::Shader fshNoiseDispl   ("shaders/noise_displacement.fsh", GL_FRAGMENT_SHADER);
+    GL::Shader fshColorConv    ("shaders/color_conv_mrt.fsh",     GL_FRAGMENT_SHADER);
 
     m_Shaders["font"]       = std::unique_ptr<GL::ShaderProgram>(new GL::GenericFontShader());
 
@@ -153,6 +155,12 @@ int AcidbrotApp::initialize () {
         "noise_displacement"
         ));
 
+    m_Shaders["colorConv"]  = std::unique_ptr<GL::ShaderProgram>(new GL::ShaderProgram(
+        vshGeneric,
+        fshColorConv,
+        "colorConv"
+        ));
+
     //GL::Shader vshGeometry ("shaders/temp/geometry.vsh", GL_VERTEX_SHADER);
     //GL::Shader gshGeometry ("shaders/temp/geometry.gsh", GL_GEOMETRY_SHADER);
     //GL::Shader fshGeometry ("shaders/temp/geometry.fsh", GL_FRAGMENT_SHADER);
@@ -172,7 +180,7 @@ int AcidbrotApp::initialize () {
 
     addParameter(Parameter("fractalIter", true,  256.0,  10.0, 512.0, 100.000));
     addParameter(Parameter("colorExp",    true,  1.0000, 0.5,  2.0,   0.500));
-    addParameter(Parameter("colorCycles", true,  1.0000, 1.0,  6.0,   1.000));
+    addParameter(Parameter("colorCycles", true,  4.0000, 1.0,  6.0,   1.000));
     addParameter(Parameter("haloSteps",   false, 15.0,   10.0, 50.0,  20.0));
     addParameter(Parameter("haloStepFac", true,  0.9875, 0.5,  1.0,   0.025));
     addParameter(Parameter("haloAttnFac", true,  0.9250, 0.5,  1.0,   0.100));
@@ -270,8 +278,13 @@ int AcidbrotApp::initializeFramebuffers () {
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
     );
 
+
     m_Framebuffers["master"] = std::unique_ptr<GL::Framebuffer>(
         new GL::Framebuffer(fbWidth, fbHeight, GL_RGBA, 1, false)
+    );
+
+    m_Framebuffers["masterYUV"] = std::unique_ptr<GL::Framebuffer>(
+        new GL::Framebuffer(fbWidth, fbHeight, GL_RED,  3, false)
     );
 
     // ..........................................
@@ -342,7 +355,7 @@ void AcidbrotApp::takeScreenshot () {
 
     // Download the framebuffer
     GL::Framebuffer* fb = m_Framebuffers.at("master").get();
-    auto data = fb->readPixels(0);
+    auto data = fb->readPixels();
 
     // Determine file name
     size_t index = getNextFileIndex(nameFormat, 0);
@@ -355,6 +368,92 @@ void AcidbrotApp::takeScreenshot () {
             fb->getHeight(),
             data.get(),
             true);
+}
+
+void AcidbrotApp::startRecording () {
+    const std::string nameFormat = "video_%04d.h264";
+
+    // Determine the file name
+    size_t index = getNextFileIndex(nameFormat, 0);
+    std::string fileName = stringf(nameFormat, index);
+
+    m_Logger->info("Recording video to '{}'", fileName);
+
+    // Setup encoder parameters
+    ParamDict encoderParams;
+
+    // Initialize the video encoder
+    GL::Framebuffer* fb = m_Framebuffers.at("master").get();
+    m_VideoRec.encoder.reset(new VideoEncoder(
+                fb->getWidth(),
+                fb->getHeight(),
+                encoderParams
+                ));
+
+    // Open the file
+    m_VideoRec.file.open(fileName, std::ofstream::binary);
+
+    m_VideoRec.running = true;
+}
+
+void AcidbrotApp::stopRecording () {
+
+    // Flush
+    m_VideoRec.encoder->flush();
+    while (m_VideoRec.encoder->isFlushing()) {
+
+        VideoEncoder::Buffer encodedData;
+
+        while (m_VideoRec.encoder->getData(encodedData)) {
+            m_VideoRec.file.write(
+                    (const char*)encodedData.data(),
+                    encodedData.size());
+        }
+    }
+
+    // Close the file
+    m_VideoRec.file.close();
+
+    // De-initialize the video encoder
+    m_VideoRec.encoder.reset();
+
+    m_Logger->info("Video recording finished");
+    m_VideoRec.running = false;
+}
+
+void AcidbrotApp::recordFrame () {
+
+    // ................................
+    // Get content of the YUV framebuffer(s)
+    // and pass it to the video encoder
+
+    // Download the framebuffer
+    GL::Framebuffer* fb = m_Framebuffers.at("masterYUV").get();
+    auto dataY = fb->readPixels(0);
+    auto dataU = fb->readPixels(1);
+    auto dataV = fb->readPixels(2);
+
+    size_t lumaSize = fb->getWidth() * fb->getHeight();
+
+    VideoEncoder::Buffer pictureData(3 * lumaSize);
+    uint8_t* ptr = (uint8_t*)pictureData.data();
+    memcpy(ptr, dataY.get(), lumaSize); ptr += lumaSize;
+    memcpy(ptr, dataU.get(), lumaSize); ptr += lumaSize;
+    memcpy(ptr, dataV.get(), lumaSize); ptr += lumaSize;
+
+    m_VideoRec.encoder->encode(pictureData);
+
+    // ................................
+    // Get data from the video encoder and
+    // write it to the file
+
+    VideoEncoder::Buffer encodedData;
+
+    while (m_VideoRec.encoder->getData(encodedData)) {
+        m_VideoRec.file.write(
+                (const char*)encodedData.data(),
+                encodedData.size());
+    }
 }
 
 // ============================================================================
@@ -402,20 +501,30 @@ void AcidbrotApp::keyCallback(GLFWwindow* a_Window,
         setFullscreen(a_Window, !isFullscreen(a_Window));
     }
 
+    // Enable / disable fixed frame rate
+    if (a_Key == GLFW_KEY_F9 && a_Action == GLFW_PRESS) {
+        m_FixedFrameRate = !m_FixedFrameRate;
+        if (m_FixedFrameRate) {
+            m_EnableVSync = false;
+            glfwSwapInterval(m_EnableVSync);
+        }
+    }
+
     // Enable / disable VSync
-    if (a_Key == GLFW_KEY_F11 && a_Action == GLFW_PRESS) {
+    if (a_Key == GLFW_KEY_F10 && a_Action == GLFW_PRESS) {
         if (!m_FixedFrameRate) {
             m_EnableVSync = !m_EnableVSync;
             glfwSwapInterval(m_EnableVSync);
         }
     }
 
-    // Enable / disable fixed frame rate
-    if (a_Key == GLFW_KEY_F10 && a_Action == GLFW_PRESS) {
-        m_FixedFrameRate = !m_FixedFrameRate;
-        if (m_FixedFrameRate) {
-            m_EnableVSync = false;
-            glfwSwapInterval(m_EnableVSync);
+    // Video recording
+    if (a_Key == GLFW_KEY_F11 && a_Action == GLFW_PRESS) {
+        if (!m_VideoRec.running) {
+            startRecording();
+        }
+        else {
+            stopRecording();
         }
     }
 
@@ -930,6 +1039,45 @@ int AcidbrotApp::renderScene () {
     }
 
     // ................................
+    // Convert "master" to "masterYUV"
+    if (m_VideoRec.running) {
+        GL::ShaderProgram* shader = m_Shaders.at("colorConv").get();
+        GL::Framebuffer*   fbSrc  = m_Framebuffers.at("master").get();
+        GL::Framebuffer*   fbDst  = m_Framebuffers.at("masterYUV").get();
+
+        // Setup
+        GL_CHECK(glUseProgram(shader->get()));
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, fbSrc->getTexture()));
+
+        // BT.709
+        // https://en.wikipedia.org/wiki/YUV
+        float matConv[] = {
+             0.21260, 0.71520,  0.07220,
+            -0.09991,-0.33609,  0.43600,
+             0.61500,-0.55861, -0.05639
+        };
+
+        GL_CHECK(glUniformMatrix3fv(shader->getUniformLocation("matConv"), 1, GL_TRUE, matConv));
+
+        fbDst->enable();
+
+        // Render (flipped)
+        m_ScreenQuad->draw(-1.0f, -1.0f, +1.0f, +1.0f,
+                            0.0f,  1.0f,  1.0f,  0.0f);
+
+        // Cleanup
+        fbDst->disable();
+
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+
+        GL_CHECK(glUseProgram(0));
+    }
+
+
+    // ................................
     // Geometry
 /*    {
         float points[] = {
@@ -1007,7 +1155,9 @@ int AcidbrotApp::loop (double dt) {
     renderScene();
 
     // Record video
-    // TODO:
+    if (m_VideoRec.running) {
+        recordFrame();
+    }
 
     // Take a screenshot
     if (m_DoScreenshot) {

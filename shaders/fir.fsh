@@ -10,6 +10,8 @@ uniform float filterWeights [TAPS];
 
 out vec4 o_Color;
 
+// ============================================================================
+
 void main(void) {
 
     vec4 color = vec4(0.0, 0.0, 0.0, 0.0);
